@@ -201,11 +201,12 @@ export default function AddCompanyPage() {
                   disabled={loading}
                 />
                 {image && (
-                  <div className="mt-2">
+                  <div className="mt-2 relative h-32 w-32 overflow-hidden rounded">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={image}
                       alt="Company Logo Preview"
-                      className="h-32 w-32 object-cover rounded"
+                      className="h-full w-full object-cover"
                     />
                   </div>
                 )}

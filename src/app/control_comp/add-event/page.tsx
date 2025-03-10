@@ -196,11 +196,12 @@ export default function AddEventPage() {
                     disabled={loading}
                   />
                   {image && (
-                    <div className="mt-2">
+                    <div className="mt-2 relative h-40 w-full overflow-hidden rounded">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={image}
                         alt="Event Banner Preview"
-                        className="h-40 w-full object-cover rounded"
+                        className="h-full w-full object-cover"
                       />
                     </div>
                   )}

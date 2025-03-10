@@ -63,11 +63,9 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if companies sheet exists, if not create it
-    let companiesSheetExists = true;
     try {
       await getSheetData('companies');
     } catch {
-      companiesSheetExists = false;
       console.log('Companies sheet does not exist, creating it...');
       // Create companies sheet with headers
       await createSheet('companies');

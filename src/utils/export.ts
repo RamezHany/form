@@ -1,9 +1,12 @@
 import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
+// Type for row data
+type RowData = (string | number | boolean | null | undefined)[][];
+
 // Export data to PDF
 export const exportToPDF = (
-  data: any[],
+  data: RowData,
   headers: string[],
   title: string,
   filename: string = 'export.pdf'
@@ -93,7 +96,7 @@ export const exportToPDF = (
 
 // Export data to Excel (XLSX)
 export const exportToExcel = (
-  data: any[],
+  data: RowData,
   headers: string[],
   sheetName: string = 'Sheet1',
   filename: string = 'export.xlsx'
@@ -114,7 +117,7 @@ export const exportToExcel = (
 
 // Export data to CSV
 export const exportToCSV = (
-  data: any[],
+  data: RowData,
   headers: string[],
   filename: string = 'export.csv'
 ) => {

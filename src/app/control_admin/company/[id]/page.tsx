@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -31,25 +31,7 @@ export default function CompanyEventsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    // Redirect if not authenticated or not admin
-    if (status === 'unauthenticated') {
-      router.push('/login');
-      return;
-    }
-
-    if (status === 'authenticated' && session.user.type !== 'admin') {
-      router.push('/');
-      return;
-    }
-
-    // Fetch company and events
-    if (status === 'authenticated') {
-      fetchCompanyAndEvents();
-    }
-  }, [status, session, router, companyId]);
-
-  const fetchCompanyAndEvents = async () => {
+  const fetchCompanyAndEvents = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -86,7 +68,25 @@ export default function CompanyEventsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [companyId]);
+
+  useEffect(() => {
+    // Redirect if not authenticated or not admin
+    if (status === 'unauthenticated') {
+      router.push('/login');
+      return;
+    }
+
+    if (status === 'authenticated' && session.user.type !== 'admin') {
+      router.push('/');
+      return;
+    }
+
+    // Fetch company and events
+    if (status === 'authenticated') {
+      fetchCompanyAndEvents();
+    }
+  }, [status, session, router, fetchCompanyAndEvents]);
 
   const handleViewRegistrations = (eventId: string) => {
     if (!company) return;

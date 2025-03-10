@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -29,25 +29,7 @@ export default function EventRegistrationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    // Redirect if not authenticated or not company
-    if (status === 'unauthenticated') {
-      router.push('/login');
-      return;
-    }
-
-    if (status === 'authenticated' && session.user.type !== 'company') {
-      router.push('/');
-      return;
-    }
-
-    // Fetch registrations
-    if (status === 'authenticated' && session.user.name) {
-      fetchRegistrations();
-    }
-  }, [status, session, router, eventId]);
-
-  const fetchRegistrations = async () => {
+  const fetchRegistrations = useCallback(async () => {
     if (!session?.user?.name) return;
     
     try {
@@ -72,7 +54,25 @@ export default function EventRegistrationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session, eventId]);
+
+  useEffect(() => {
+    // Redirect if not authenticated or not company
+    if (status === 'unauthenticated') {
+      router.push('/login');
+      return;
+    }
+
+    if (status === 'authenticated' && session.user.type !== 'company') {
+      router.push('/');
+      return;
+    }
+
+    // Fetch registrations
+    if (status === 'authenticated' && session.user.name) {
+      fetchRegistrations();
+    }
+  }, [status, session, router, fetchRegistrations]);
 
   const handleExportPDF = () => {
     if (!session?.user?.name || !registrations.length) return;

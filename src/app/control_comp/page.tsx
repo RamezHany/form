@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -16,29 +16,12 @@ interface Event {
 export default function CompanyDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    // Redirect if not authenticated
-    if (status === 'unauthenticated') {
-      router.push('/login');
-      return;
-    }
-
-    if (status === 'authenticated' && session.user.type !== 'company') {
-      router.push('/');
-      return;
-    }
-
-    // Fetch events
-    if (status === 'authenticated') {
-      fetchEvents();
-    }
-  }, [status, session, router]);
-
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     if (!session?.user?.name) return;
     
     try {
@@ -57,7 +40,25 @@ export default function CompanyDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
+
+  useEffect(() => {
+    // Redirect if not authenticated or not company
+    if (status === 'unauthenticated') {
+      router.push('/login');
+      return;
+    }
+
+    if (status === 'authenticated' && session.user.type !== 'company') {
+      router.push('/');
+      return;
+    }
+
+    // Fetch events
+    if (status === 'authenticated') {
+      fetchEvents();
+    }
+  }, [status, session, router, fetchEvents]);
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!session?.user?.name) return;
