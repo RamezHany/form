@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Event Registration System
+
+A comprehensive event registration system built with Next.js, Google Sheets API, and GitHub API. This system allows administrators to manage companies, and companies to manage their events and registrations.
+
+## Features
+
+- **Admin Dashboard**
+  - Manage companies (add, view, delete)
+  - View company events and registrations
+  - Export registrations to PDF or CSV
+
+- **Company Dashboard**
+  - Manage events (add, view, delete)
+  - View event registrations
+  - Export registrations to PDF or CSV
+
+- **Event Registration**
+  - Public registration forms for events
+  - Form validation
+  - Responsive design
+
+## Tech Stack
+
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Authentication**: NextAuth.js
+- **Data Storage**: Google Sheets API
+- **Image Storage**: GitHub API
+- **Export**: jsPDF, xlsx
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+ and npm
+- Google Cloud Platform account with Sheets API enabled
+- GitHub account with a repository for image storage
+
+### Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```
+# Google Sheets API
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account-email@example.com
+GOOGLE_PRIVATE_KEY="your-private-key"
+GOOGLE_SHEET_ID=your-sheet-id
+
+# GitHub API
+GITHUB_TOKEN=your-github-token
+GITHUB_REPO_OWNER=your-github-username
+GITHUB_REPO_NAME=your-repo-name
+
+# Admin Credentials
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin_password
+
+# NextAuth
+NEXTAUTH_SECRET=your-nextauth-secret
+NEXTAUTH_URL=http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Usage
 
-## Learn More
+### Admin Access
 
-To learn more about Next.js, take a look at the following resources:
+1. Go to `/login` and select "Admin"
+2. Enter the admin credentials from your `.env.local` file
+3. Manage companies and view their events and registrations
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Company Access
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Go to `/login` and select "Company"
+2. Enter the company credentials (created by admin)
+3. Manage events and view registrations
 
-## Deploy on Vercel
+### Event Registration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Access the event registration form at `/{company_name}/{event_id}`
+2. Fill out the form and submit
+3. Receive confirmation of successful registration
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
