@@ -24,8 +24,9 @@ interface Event {
 
 export default function EventRegistrationPage() {
   const params = useParams();
-  const companyName = params.company_name as string;
-  const eventId = params.event_id as string;
+  // Decode URL-encoded parameters
+  const companyName = decodeURIComponent(params.company_name as string);
+  const eventId = decodeURIComponent(params.event_id as string);
   
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -42,24 +43,36 @@ export default function EventRegistrationPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [eventImage, setEventImage] = useState<string | null>(null);
+  const [exactEventName, setExactEventName] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch event details to verify it exists and get the image
     const fetchEventDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/events?company=${companyName}`);
+        console.log('Fetching events for company:', companyName);
+        const response = await fetch(`/api/events?company=${encodeURIComponent(companyName)}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch event details');
         }
         
         const data = await response.json();
-        const event = data.events.find((e: Event) => e.id === eventId);
+        console.log('Events received:', data.events);
+        
+        // Find the event that matches (case insensitive)
+        const normalizedEventId = eventId.trim().toLowerCase();
+        const event = data.events.find(
+          (e: Event) => e.id.trim().toLowerCase() === normalizedEventId
+        );
         
         if (!event) {
+          console.error('Event not found:', { eventId, availableEvents: data.events.map((e: Event) => e.id) });
           throw new Error('Event not found');
         }
+        
+        console.log('Found matching event:', event);
+        setExactEventName(event.id); // Store the exact event name from the API
         
         if (event.image) {
           setEventImage(event.image);
@@ -84,6 +97,11 @@ export default function EventRegistrationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!exactEventName) {
+      setError('Event information is missing. Please refresh the page and try again.');
+      return;
+    }
     
     // Validate form
     if (
@@ -117,6 +135,11 @@ export default function EventRegistrationPage() {
     setError('');
     
     try {
+      console.log('Submitting registration with:', {
+        companyName,
+        eventName: exactEventName, // Use the exact event name from the API
+      });
+      
       const response = await fetch('/api/events/register', {
         method: 'POST',
         headers: {
@@ -124,15 +147,14 @@ export default function EventRegistrationPage() {
         },
         body: JSON.stringify({
           companyName,
-          eventName: eventId,
+          eventName: exactEventName, // Use the exact event name from the API
           ...formData,
         }),
       });
       
-      const data = await response.json();
-      
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to register for event');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to register for event');
       }
       
       // Show success message

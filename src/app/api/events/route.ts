@@ -18,14 +18,18 @@ export async function GET(request: NextRequest) {
 
     // Get company name from query parameters
     const { searchParams } = new URL(request.url);
-    const companyName = searchParams.get('company');
+    const rawCompanyName = searchParams.get('company');
     
-    if (!companyName) {
+    if (!rawCompanyName) {
       return NextResponse.json(
         { error: 'Company name is required' },
         { status: 400 }
       );
     }
+    
+    // Ensure company name is properly decoded
+    const companyName = decodeURIComponent(rawCompanyName);
+    console.log('Getting events for company:', companyName);
     
     // Check if user is admin or the company owner
     if (session.user.type !== 'admin' && session.user.name !== companyName) {

@@ -48,7 +48,7 @@ export const getSheetData = async (sheetName: string) => {
 };
 
 // Append data to a specific sheet
-export const appendToSheet = async (sheetName: string, values: any[][]) => {
+export const appendToSheet = async (sheetName: string, values: unknown[][]) => {
   try {
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
@@ -153,20 +153,48 @@ export const createTable = async (sheetName: string, tableName: string, headers:
 };
 
 // Get data from a specific table in a sheet
-export const getTableData = async (sheetName: string, tableName: string) => {
+export const getTableData = async (sheetName: string, tableName: string): Promise<string[][]> => {
   try {
+    console.log(`Fetching table data for ${tableName} in sheet ${sheetName}`);
     const data = await getSheetData(sheetName);
     
-    // Find the table start index
+    if (!data || data.length === 0) {
+      console.error(`Sheet ${sheetName} is empty or does not exist`);
+      throw new Error(`Sheet ${sheetName} is empty or does not exist`);
+    }
+    
+    console.log(`Sheet ${sheetName} has ${data.length} rows`);
+    
+    // Try direct match first
     let tableStartIndex = -1;
     for (let i = 0; i < data.length; i++) {
-      if (data[i][0] === tableName) {
+      if (data[i] && data[i][0] === tableName) {
+        console.log(`Found exact match for table ${tableName} at row ${i}`);
         tableStartIndex = i;
         break;
       }
     }
     
+    // If no direct match, try case-insensitive match
     if (tableStartIndex === -1) {
+      const normalizedTableName = tableName.trim().toLowerCase();
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] && data[i][0] && data[i][0].trim().toLowerCase() === normalizedTableName) {
+          console.log(`Found case-insensitive match for table ${tableName} at row ${i}: ${data[i][0]}`);
+          tableStartIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (tableStartIndex === -1) {
+      console.error(`Table ${tableName} not found in sheet ${sheetName}`);
+      console.log('Available tables:');
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] && data[i].length === 1 && data[i][0]) {
+          console.log(`- ${data[i][0]} (row ${i})`);
+        }
+      }
       throw new Error(`Table ${tableName} not found in sheet ${sheetName}`);
     }
     
@@ -179,6 +207,8 @@ export const getTableData = async (sheetName: string, tableName: string) => {
         break;
       }
     }
+    
+    console.log(`Table ${tableName} spans from row ${tableStartIndex + 1} to ${tableEndIndex - 1}`);
     
     // Extract the table data (including headers)
     const tableData = data.slice(tableStartIndex + 1, tableEndIndex);
@@ -191,20 +221,47 @@ export const getTableData = async (sheetName: string, tableName: string) => {
 };
 
 // Add data to a specific table in a sheet
-export const addToTable = async (sheetName: string, tableName: string, rowData: any[]) => {
+export const addToTable = async (sheetName: string, tableName: string, rowData: unknown[]) => {
   try {
+    console.log(`Adding data to table ${tableName} in sheet ${sheetName}`);
     const data = await getSheetData(sheetName);
     
-    // Find the table start index
+    if (!data || data.length === 0) {
+      console.error(`Sheet ${sheetName} is empty or does not exist`);
+      throw new Error(`Sheet ${sheetName} is empty or does not exist`);
+    }
+    
+    // Try direct match first
     let tableStartIndex = -1;
     for (let i = 0; i < data.length; i++) {
-      if (data[i][0] === tableName) {
+      if (data[i] && data[i][0] === tableName) {
+        console.log(`Found exact match for table ${tableName} at row ${i}`);
         tableStartIndex = i;
         break;
       }
     }
     
+    // If no direct match, try case-insensitive match
     if (tableStartIndex === -1) {
+      const normalizedTableName = tableName.trim().toLowerCase();
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] && data[i][0] && data[i][0].trim().toLowerCase() === normalizedTableName) {
+          console.log(`Found case-insensitive match for table ${tableName} at row ${i}: ${data[i][0]}`);
+          tableName = data[i][0]; // Use the exact table name from the sheet
+          tableStartIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (tableStartIndex === -1) {
+      console.error(`Table ${tableName} not found in sheet ${sheetName}`);
+      console.log('Available tables:');
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] && data[i].length === 1 && data[i][0]) {
+          console.log(`- ${data[i][0]} (row ${i})`);
+        }
+      }
       throw new Error(`Table ${tableName} not found in sheet ${sheetName}`);
     }
     
@@ -218,8 +275,12 @@ export const addToTable = async (sheetName: string, tableName: string, rowData: 
       }
     }
     
+    console.log(`Table ${tableName} spans from row ${tableStartIndex + 1} to ${tableEndIndex - 1}`);
+    
     // Calculate the range to append the data
     const range = `${sheetName}!A${tableEndIndex + 1}`;
+    
+    console.log(`Appending data to range: ${range}`);
     
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
@@ -229,6 +290,8 @@ export const addToTable = async (sheetName: string, tableName: string, rowData: 
         values: [rowData],
       },
     });
+    
+    console.log('Data added successfully');
     
     return response.data;
   } catch (error) {
