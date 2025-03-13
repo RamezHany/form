@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, appendToTable } from '@/lib/sheets';
+import { getSheetData, addToTable } from '@/lib/sheets';
 
 // POST /api/register - Register for an event
 export async function POST(request: NextRequest) {
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Add registration
-    await appendToTable(companyName, eventName, [name, email]);
+    await addToTable(companyName, eventName, [name, email]);
     
     console.log('Registration successful');
     
