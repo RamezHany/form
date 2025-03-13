@@ -25,13 +25,19 @@ export async function GET() {
     // Skip header row and map to objects
     const companies = data.slice(1).map((row) => {
       console.log(`Company ${row[1]} enabled value:`, row[5]);
+      
+      // تحسين طريقة تحويل قيمة enabled من النص إلى قيمة منطقية
+      // اعتبار القيمة 'true' فقط كـ true، وأي قيمة أخرى (بما في ذلك 'false' أو undefined) كـ false
+      const isEnabled = row[5] === 'true';
+      console.log(`Company ${row[1]} isEnabled after conversion:`, isEnabled);
+      
       return {
         id: row[0],
         name: row[1],
         username: row[2],
         // Don't include password
         image: row[4] || null,
-        enabled: row[5] !== 'false', // Add enabled status
+        enabled: isEnabled, // استخدام القيمة المحولة بشكل صحيح
       };
     });
     
