@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -33,9 +33,10 @@ export default function EditCompanyPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const fetchCompany = async () => {
+  const fetchCompany = useCallback(async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await fetch('/api/companies');
       
       if (!response.ok) {
@@ -66,7 +67,7 @@ export default function EditCompanyPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     // Redirect if not authenticated or not admin
@@ -156,8 +157,8 @@ export default function EditCompanyPage() {
       // Reset password field
       setFormData((prev) => ({ ...prev, password: '' }));
       
-      // Refresh company data
-      fetchCompany();
+      // No need to refresh company data, we already have the updated values
+      // fetchCompany();
     } catch (error) {
       console.error('Error updating company:', error);
       setError(error instanceof Error ? error.message : 'Failed to update company');
@@ -168,8 +169,38 @@ export default function EditCompanyPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="text-xl">Loading company details...</div>
+          <p className="text-gray-500 mt-2">Please wait while we fetch the company information.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !formData.name) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <div className="text-xl font-semibold text-red-700 mb-2">Error Loading Company</div>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={() => fetchCompany()}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              Try Again
+            </button>
+            <Link
+              href="/control_admin"
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
