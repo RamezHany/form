@@ -362,4 +362,47 @@ export const deleteTable = async (sheetName: string, tableName: string) => {
     console.error(`Error deleting table ${tableName} from sheet ${sheetName}:`, error);
     throw error;
   }
-}; 
+};
+
+/**
+ * Create a new sheet in a Google Sheets document
+ * @param spreadsheetId The ID of the spreadsheet
+ * @param sheetName The name of the new sheet
+ * @param headers The headers for the new sheet
+ * @returns Promise that resolves when the sheet is created
+ */
+export async function createSheet(spreadsheetId: string, sheetName: string, headers: string[]): Promise<void> {
+  try {
+    const auth = await getGoogleAuth();
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // Create the sheet
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addSheet: {
+              properties: {
+                title: sheetName,
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    // Add headers to the sheet
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${sheetName}!A1:${String.fromCharCode(65 + headers.length - 1)}1`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [headers],
+      },
+    });
+  } catch (error) {
+    console.error('Error creating sheet:', error);
+    throw error;
+  }
+} 

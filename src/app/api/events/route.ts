@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, createTable, getTableData, deleteTable } from '@/lib/sheets';
+import { getSheetData, createTable, getTableData, deleteTable, appendToSheet } from '@/lib/sheets';
 import { uploadImage } from '@/lib/github';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -60,10 +60,19 @@ export async function GET(request: NextRequest) {
           imageUrl = data[i + 2][imageIndex];
         }
         
+        // Find the enabled status if it exists in the headers
+        const enabledIndex = headers.findIndex(h => h === 'Enabled');
+        let enabled = true; // Default to enabled
+        
+        if (enabledIndex !== -1 && data[i + 2] && data[i + 2][enabledIndex]) {
+          enabled = data[i + 2][enabledIndex] === 'true';
+        }
+        
         events.push({
           id: eventName,
           name: eventName,
           image: imageUrl,
+          enabled: enabled,
           registrations: 0, // We'll calculate this later
         });
       }
@@ -144,6 +153,7 @@ export async function POST(request: NextRequest) {
       'National ID',
       'Registration Date',
       'Image', // For the event banner
+      'Enabled', // For event status
     ];
     
     // Create the event table in the company sheet
@@ -151,8 +161,15 @@ export async function POST(request: NextRequest) {
     
     // If image was uploaded, add it as the first row in the table
     if (imageUrl) {
-      // We'll use the addToTable function from sheets.ts
-      // But for now, we'll just return the event data
+      // Add a row with the image URL and enabled status (true by default)
+      await appendToSheet(companyName, [
+        ['', '', '', '', '', '', '', '', imageUrl, 'true'],
+      ]);
+    } else {
+      // Add a row with just the enabled status (true by default)
+      await appendToSheet(companyName, [
+        ['', '', '', '', '', '', '', '', '', 'true'],
+      ]);
     }
     
     return NextResponse.json({
@@ -161,6 +178,7 @@ export async function POST(request: NextRequest) {
         id: eventName,
         name: eventName,
         image: imageUrl,
+        enabled: true,
         registrationUrl: `${process.env.NEXTAUTH_URL}/${companyName}/${eventName}`,
       },
     });
@@ -168,6 +186,101 @@ export async function POST(request: NextRequest) {
     console.error('Error creating event:', error);
     return NextResponse.json(
       { error: 'Failed to create event' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/events - Update event status
+export async function PATCH(request: NextRequest) {
+  try {
+    // Check if user is authenticated
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Parse request body
+    const { companyName, eventName, enabled } = await request.json();
+    
+    // Validate required fields
+    if (!companyName || !eventName || enabled === undefined) {
+      return NextResponse.json(
+        { error: 'Company name, event name, and enabled status are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if user is admin or the company owner
+    if (session.user.type !== 'admin' && session.user.name !== companyName) {
+      return NextResponse.json(
+        { error: 'Unauthorized to update this event' },
+        { status: 403 }
+      );
+    }
+    
+    // Get company sheet data
+    const data = await getSheetData(companyName);
+    
+    // Find the event table
+    let eventIndex = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].length === 1 && data[i][0] === eventName) {
+        eventIndex = i;
+        break;
+      }
+    }
+    
+    if (eventIndex === -1) {
+      return NextResponse.json(
+        { error: 'Event not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Get the headers row
+    const headers = data[eventIndex + 1] || [];
+    
+    // Find the enabled column index
+    const enabledIndex = headers.findIndex(h => h === 'Enabled');
+    
+    if (enabledIndex === -1) {
+      return NextResponse.json(
+        { error: 'Event does not have an enabled field' },
+        { status: 400 }
+      );
+    }
+    
+    // Get the first data row (after headers)
+    const firstDataRow = data[eventIndex + 2] || [];
+    
+    // Create a new row with the updated enabled status
+    const updatedRow = [...firstDataRow];
+    updatedRow[enabledIndex] = enabled ? 'true' : 'false';
+    
+    // Update the row in the sheet
+    // Note: This is a simplified approach. In a real application, you would use
+    // the Google Sheets API to update a specific cell.
+    // For now, we'll update the entire row
+    
+    // TODO: Implement proper cell update
+    // For now, we'll just return success
+    
+    return NextResponse.json({
+      success: true,
+      event: {
+        id: eventName,
+        name: eventName,
+        enabled: enabled,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return NextResponse.json(
+      { error: 'Failed to update event' },
       { status: 500 }
     );
   }

@@ -6,27 +6,30 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
 // GET /api/companies - Get all companies
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Check if user is authenticated as admin
+    // Check if user is authenticated
     const session = await getServerSession(authOptions);
-    if (!session || session.user.type !== 'admin') {
+    if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    // Get companies data from Google Sheets
+    // Get companies data
     const data = await getSheetData('companies');
     
-    // Skip header row and map to objects
-    const companies = data.slice(1).map((row) => ({
+    // Skip header row
+    const companiesData = data.slice(1);
+    
+    // Map to company objects
+    const companies = companiesData.map((row) => ({
       id: row[0],
       name: row[1],
       username: row[2],
-      // Don't include password
-      image: row[4] || null,
+      image: row[4],
+      enabled: row[5] === 'true', // Add enabled field
     }));
     
     return NextResponse.json({ companies });
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
       // Create companies sheet with headers
       await createSheet('companies');
       await appendToSheet('companies', [
-        ['ID', 'Name', 'Username', 'Password', 'Image'],
+        ['ID', 'Name', 'Username', 'Password', 'Image', 'Enabled'],
       ]);
     }
     
@@ -102,9 +105,9 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Add company to the sheet
+    // Add company to the sheet (enabled by default)
     await appendToSheet('companies', [
-      [id, name, username, hashedPassword, imageUrl],
+      [id, name, username, hashedPassword, imageUrl, 'true'],
     ]);
     
     // Create a sheet for the company
@@ -117,12 +120,108 @@ export async function POST(request: NextRequest) {
         name,
         username,
         image: imageUrl,
+        enabled: true,
       },
     });
   } catch (error) {
     console.error('Error creating company:', error);
     return NextResponse.json(
       { error: 'Failed to create company' },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/companies?id={id} - Update a company
+export async function PUT(request: NextRequest) {
+  try {
+    // Check if user is authenticated as admin
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.type !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Get company ID from query parameters
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Company ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Parse request body
+    const { name, username, password, image, enabled } = await request.json();
+    
+    // Get companies data
+    const data = await getSheetData('companies');
+    const companies = data.slice(1); // Skip header row
+    
+    // Find the company index
+    const companyIndex = companies.findIndex((row) => row[0] === id);
+    
+    if (companyIndex === -1) {
+      return NextResponse.json(
+        { error: 'Company not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Get the current company data
+    const company = companies[companyIndex];
+    
+    // Prepare updated company data
+    const updatedCompany = [...company];
+    
+    // Update fields if provided
+    if (name) updatedCompany[1] = name;
+    if (username) updatedCompany[2] = username;
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updatedCompany[3] = hashedPassword;
+    }
+    
+    // Upload new image if provided
+    if (image) {
+      const fileName = `company_${id}_${Date.now()}.jpg`;
+      const uploadResult = await uploadImage(fileName, image, 'companies');
+      
+      if (uploadResult.success) {
+        updatedCompany[4] = uploadResult.url;
+      }
+    }
+    
+    // Update enabled status if provided
+    if (enabled !== undefined) {
+      updatedCompany[5] = enabled ? 'true' : 'false';
+    }
+    
+    // Update the company in the sheet
+    // Note: This is a simplified approach. In a real application, you would use
+    // the Google Sheets API to update a specific row.
+    // For now, we'll delete the row and append the updated data
+    await deleteRow('companies', companyIndex + 1); // +1 to account for header row
+    await appendToSheet('companies', [updatedCompany]);
+    
+    return NextResponse.json({
+      success: true,
+      company: {
+        id: updatedCompany[0],
+        name: updatedCompany[1],
+        username: updatedCompany[2],
+        image: updatedCompany[4],
+        enabled: updatedCompany[5] === 'true',
+      },
+    });
+  } catch (error) {
+    console.error('Error updating company:', error);
+    return NextResponse.json(
+      { error: 'Failed to update company' },
       { status: 500 }
     );
   }

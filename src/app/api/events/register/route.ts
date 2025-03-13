@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, addToTable, getTableData } from '@/lib/sheets';
+import { getSheetData, appendToSheet, createSheet } from '@/lib/sheets';
+import { getEventRegistrationsSheet } from '@/lib/utils';
 
 // POST /api/events/register - Register for an event
 export async function POST(request: NextRequest) {
@@ -57,8 +58,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Validate phone number (simple validation)
-    const phoneRegex = /^\d{10,15}$/;
+    // Validate phone number format (Egyptian format)
+    const phoneRegex = /^01[0-2,5]{1}[0-9]{8}$/;
     if (!phoneRegex.test(phone)) {
       return NextResponse.json(
         { error: 'Invalid phone number format' },
@@ -66,100 +67,101 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if the company exists
-    try {
-      console.log('Checking if company exists:', companyName);
-      const sheetData = await getSheetData(companyName);
-      
-      if (!sheetData || sheetData.length === 0) {
-        console.error(`Company sheet ${companyName} is empty or does not exist`);
-        return NextResponse.json(
-          { error: 'Company not found' },
-          { status: 404 }
-        );
+    // Get company data
+    const companiesData = await getSheetData(process.env.COMPANIES_SHEET_ID || '');
+    const headers = companiesData[0];
+    const nameIndex = headers.indexOf('Name');
+    const sheetIdIndex = headers.indexOf('SheetId');
+    const enabledIndex = headers.indexOf('Enabled');
+    
+    let companySheetId = '';
+    let companyEnabled = true;
+    
+    for (let i = 1; i < companiesData.length; i++) {
+      if (companiesData[i][nameIndex] === companyName) {
+        companySheetId = companiesData[i][sheetIdIndex];
+        companyEnabled = companiesData[i][enabledIndex] === 'TRUE';
+        break;
       }
-      
-      // Check if the event exists
-      try {
-        console.log('Checking if event exists:', { companyName, eventName });
-        const tableData = await getTableData(companyName, eventName);
-        
-        if (!tableData || tableData.length === 0) {
-          console.error(`Event ${eventName} not found in company ${companyName}`);
-          return NextResponse.json(
-            { error: 'Event not found' },
-            { status: 404 }
-          );
-        }
-        
-        // Check if the person is already registered (by email or phone)
-        // Skip header row
-        const registrationData = tableData.slice(1);
-        
-        // Find registration with matching email or phone
-        const existingRegistration = registrationData.find(
-          (row) => row[2] === email || row[1] === phone
-        );
-        
-        if (existingRegistration) {
-          return NextResponse.json(
-            { error: 'You are already registered for this event' },
-            { status: 400 }
-          );
-        }
-        
-        // Add registration to the event table
-        const registrationDate = new Date().toISOString();
-        
-        console.log('Adding registration to table:', {
-          companyName,
-          eventName,
-          name,
-          email,
-        });
-        
-        await addToTable(companyName, eventName, [
-          name,
-          phone,
-          email,
-          gender,
-          college,
-          status,
-          nationalId,
-          registrationDate,
-          '', // No image for registrations
-        ]);
-        
-        console.log('Registration successful');
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Registration successful',
-          registration: {
-            name,
-            email,
-            registrationDate,
-          },
-        });
-      } catch (error) {
-        console.error('Error checking event:', error);
-        return NextResponse.json(
-          { error: 'Event not found' },
-          { status: 404 }
-        );
-      }
-    } catch (error) {
-      console.error('Error checking company:', error);
-      return NextResponse.json(
-        { error: 'Company not found' },
-        { status: 404 }
-      );
     }
+    
+    if (!companySheetId) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
+    // Check if company is enabled
+    if (!companyEnabled) {
+      return NextResponse.json({ error: 'This company is currently not accepting registrations' }, { status: 403 });
+    }
+    
+    // Get event data
+    const eventsData = await getSheetData(companySheetId);
+    const eventHeaders = eventsData[0];
+    const eventNameIndex = eventHeaders.indexOf('Name');
+    const eventIdIndex = eventHeaders.indexOf('ID');
+    const eventEnabledIndex = eventHeaders.indexOf('Enabled');
+    
+    let eventId = '';
+    let eventEnabled = true;
+    
+    for (let i = 1; i < eventsData.length; i++) {
+      if (eventsData[i][eventNameIndex] === eventName) {
+        eventId = eventsData[i][eventIdIndex];
+        eventEnabled = eventsData[i][eventEnabledIndex] === 'TRUE';
+        break;
+      }
+    }
+    
+    if (!eventId) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+    
+    // Check if event is enabled
+    if (!eventEnabled) {
+      return NextResponse.json({ error: 'This event is currently not accepting registrations' }, { status: 403 });
+    }
+    
+    // Check if user is already registered
+    const registrationsSheetName = getEventRegistrationsSheet(eventId);
+    let registrationsData;
+    
+    try {
+      registrationsData = await getSheetData(companySheetId, registrationsSheetName);
+    } catch (error) {
+      // Sheet might not exist yet, create it
+      await createSheet(companySheetId, registrationsSheetName, [
+        'Name', 'Email', 'Phone', 'Gender', 'College', 'Status', 'National ID', 'Timestamp'
+      ]);
+      registrationsData = [['Name', 'Email', 'Phone', 'Gender', 'College', 'Status', 'National ID', 'Timestamp']];
+    }
+    
+    if (registrationsData && registrationsData.length > 1) {
+      const emailIndex = registrationsData[0].indexOf('Email');
+      const phoneIndex = registrationsData[0].indexOf('Phone');
+      const nationalIdIndex = registrationsData[0].indexOf('National ID');
+      
+      for (let i = 1; i < registrationsData.length; i++) {
+        if (
+          registrationsData[i][emailIndex] === email ||
+          registrationsData[i][phoneIndex] === phone ||
+          registrationsData[i][nationalIdIndex] === nationalId
+        ) {
+          return NextResponse.json({ error: 'You are already registered for this event' }, { status: 400 });
+        }
+      }
+    }
+    
+    // Add registration to the event registrations sheet
+    const timestamp = new Date().toISOString();
+    await appendToSheet(
+      companySheetId,
+      registrationsSheetName,
+      [[name, email, phone, gender, college, status, nationalId, timestamp]]
+    );
+    
+    return NextResponse.json({ success: true, message: 'Registration successful' });
   } catch (error) {
     console.error('Error registering for event:', error);
-    return NextResponse.json(
-      { error: 'Failed to register for event' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

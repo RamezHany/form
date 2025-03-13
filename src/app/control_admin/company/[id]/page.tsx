@@ -9,8 +9,10 @@ import Image from 'next/image';
 interface Event {
   id: string;
   name: string;
+  date: string;
+  location: string;
   image: string | null;
-  registrations: number;
+  enabled: boolean;
 }
 
 interface Company {
@@ -18,6 +20,7 @@ interface Company {
   name: string;
   username: string;
   image: string | null;
+  enabled: boolean;
 }
 
 export default function CompanyEventsPage() {
@@ -120,6 +123,73 @@ export default function CompanyEventsPage() {
     }
   };
 
+  const handleToggleCompanyStatus = async () => {
+    if (!company) return;
+    
+    const newStatus = !company.enabled;
+    
+    if (!confirm(`Are you sure you want to ${newStatus ? 'enable' : 'disable'} this company?`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/companies?id=${company.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          enabled: newStatus,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update company status');
+      }
+      
+      // Update company in state
+      setCompany({
+        ...company,
+        enabled: newStatus,
+      });
+    } catch (error) {
+      console.error('Error updating company status:', error);
+      setError('Failed to update company status');
+    }
+  };
+
+  const handleToggleEventStatus = async (eventId: string, currentStatus: boolean) => {
+    if (!confirm(`Are you sure you want to ${currentStatus ? 'disable' : 'enable'} this event?`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/events?id=${eventId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          enabled: !currentStatus,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update event status');
+      }
+      
+      // Update events in state
+      setEvents(events.map(event => 
+        event.id === eventId 
+          ? { ...event, enabled: !currentStatus } 
+          : event
+      ));
+    } catch (error) {
+      console.error('Error updating event status:', error);
+      setError('Failed to update event status');
+    }
+  };
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -157,14 +227,37 @@ export default function CompanyEventsPage() {
                 </span>
               </div>
             )}
-            <h1 className="text-3xl font-bold text-gray-900">{company.name} Events</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{company.name} Events</h1>
+              <div className={`text-sm ${company.enabled ? 'text-green-600' : 'text-red-600'}`}>
+                Status: {company.enabled ? 'Enabled' : 'Disabled'}
+              </div>
+            </div>
           </div>
-          <Link
-            href="/control_admin"
-            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Back to Dashboard
-          </Link>
+          <div className="flex space-x-2">
+            <Link
+              href={`/control_admin/company/${company.id}/edit`}
+              className="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Edit Company
+            </Link>
+            <button
+              onClick={handleToggleCompanyStatus}
+              className={`${
+                company.enabled
+                  ? 'bg-red-100 hover:bg-red-200 text-red-800'
+                  : 'bg-green-100 hover:bg-green-200 text-green-800'
+              } font-semibold py-2 px-4 rounded`}
+            >
+              {company.enabled ? 'Disable Company' : 'Enable Company'}
+            </button>
+            <Link
+              href="/control_admin"
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
         </div>
       </header>
       
@@ -204,24 +297,34 @@ export default function CompanyEventsPage() {
                       )}
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">{event.name}</h3>
-                        <p className="text-sm text-gray-500">
-                          {event.registrations} registrations
-                        </p>
+                        <div className={`text-sm ${event.enabled ? 'text-green-600' : 'text-red-600'}`}>
+                          Status: {event.enabled ? 'Enabled' : 'Disabled'}
+                        </div>
                       </div>
                     </div>
                     <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleToggleEventStatus(event.id, event.enabled)}
+                        className={`${
+                          event.enabled
+                            ? 'bg-red-100 hover:bg-red-200 text-red-800'
+                            : 'bg-green-100 hover:bg-green-200 text-green-800'
+                        } font-semibold py-2 px-4 rounded`}
+                      >
+                        {event.enabled ? 'Disable Event' : 'Enable Event'}
+                      </button>
                       <button
                         onClick={() => handleViewRegistrations(event.id)}
                         className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-4 rounded"
                       >
                         View Registrations
                       </button>
-                      <button
-                        onClick={() => handleDeleteEvent(event.id)}
-                        className="bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded"
+                      <Link
+                        href={`/control_admin/company/${company.id}/event/${event.id}`}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                       >
-                        Delete
-                      </button>
+                        View Details
+                      </Link>
                     </div>
                   </li>
                 ))}

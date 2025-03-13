@@ -10,64 +10,63 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         username: { label: 'Username', type: 'text' },
         password: { label: 'Password', type: 'password' },
-        type: { label: 'Type', type: 'text' }, // 'admin' or 'company'
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password || !credentials?.type) {
+        if (!credentials?.username || !credentials?.password) {
           return null;
         }
-
+        
         try {
-          if (credentials.type === 'admin') {
-            // Check admin credentials from environment variables
-            const adminUsername = process.env.ADMIN_USERNAME;
-            const adminPassword = process.env.ADMIN_PASSWORD;
-
-            if (
-              credentials.username === adminUsername &&
-              credentials.password === adminPassword
-            ) {
-              return {
-                id: 'admin',
-                name: 'Admin',
-                email: 'admin@example.com',
-                type: 'admin',
-              };
-            }
-          } else if (credentials.type === 'company') {
-            // Check company credentials from Google Sheets
-            const companies = await getSheetData('companies');
-            
-            // Skip header row
-            const companyData = companies.slice(1);
-            
-            // Find the company with matching username
-            const company = companyData.find(
-              (row) => row[2] === credentials.username
-            );
-            
-            if (company) {
-              // Check password
-              const passwordMatch = await bcrypt.compare(
-                credentials.password,
-                company[3]
-              );
-              
-              if (passwordMatch) {
-                return {
-                  id: company[0], // Company ID
-                  name: company[1], // Company name
-                  image: company[4] || null, // Company image URL
-                  type: 'company',
-                };
-              }
-            }
+          // Check if it's the admin
+          if (
+            credentials.username === process.env.ADMIN_USERNAME &&
+            credentials.password === process.env.ADMIN_PASSWORD
+          ) {
+            return {
+              id: 'admin',
+              name: 'Admin',
+              type: 'admin',
+            };
           }
+          
+          // Check if it's a company
+          const data = await getSheetData('companies');
+          const companies = data.slice(1); // Skip header row
+          
+          const company = companies.find(
+            (row) => row[2] === credentials.username
+          );
+          
+          if (!company) {
+            return null;
+          }
+          
+          // Check if the company is enabled
+          const isEnabled = company[5] === 'true';
+          if (!isEnabled) {
+            throw new Error('This account has been disabled');
+          }
+          
+          // Verify password
+          const passwordMatch = await bcrypt.compare(
+            credentials.password,
+            company[3]
+          );
+          
+          if (!passwordMatch) {
+            return null;
+          }
+          
+          return {
+            id: company[0],
+            name: company[1],
+            type: 'company',
+            image: company[4] || null,
+          };
         } catch (error) {
-          console.error('Authentication error:', error);
+          console.error('Auth error:', error);
+          throw error;
         }
-
-        return null;
       },
     }),
   ],
@@ -79,19 +78,15 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.type = user.type;
-        if (user.image) {
-          token.picture = user.image;
-        }
+        token.image = user.image || null;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.id as string;
         session.user.type = token.type as string;
-        if (token.picture) {
-          session.user.image = token.picture as string;
-        }
+        session.user.image = token.image as string | null;
       }
       return session;
     },
@@ -99,7 +94,6 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
   },
-  secret: process.env.NEXTAUTH_SECRET,
 };
 
 // Extend next-auth types
