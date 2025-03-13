@@ -36,7 +36,7 @@ export async function GET() {
       console.log(`Company ${row[1]} raw data:`, row);
       
       // Get the status value from the correct column if it exists
-      let statusValue = statusColumnIndex !== -1 ? row[statusColumnIndex] : 'true';
+      const statusValue = statusColumnIndex !== -1 ? row[statusColumnIndex] : 'true';
       console.log(`Company ${row[1]} status raw value:`, statusValue);
       
       // تحسين طريقة تحويل قيمة الحالة من النص إلى قيمة منطقية

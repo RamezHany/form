@@ -160,7 +160,8 @@ export default function EventRegistrationsPage() {
       // إعادة تحميل البيانات من الخادم بعد فترة قصيرة
       setTimeout(() => {
         console.log('Reloading data from server...');
-        fetchEventAndRegistrations();
+        fetchEventDetails();
+        fetchRegistrations();
       }, 1000);
     } catch (error) {
       console.error('Error updating event:', error);
@@ -302,7 +303,7 @@ export default function EventRegistrationsPage() {
               </div>
             )}
             
-            {eventDetails.enabled === false && (
+            {eventDetails && eventDetails.enabled === false && (
               <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
                 هذا الحدث معطل حالياً. لا يمكن للمستخدمين التسجيل فيه.
               </div>

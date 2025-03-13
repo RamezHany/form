@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, createTable, getTableData, deleteTable, updateTableData } from '@/lib/sheets';
+import { getSheetData, createTable, deleteTable, updateTableData } from '@/lib/sheets';
 import { uploadImage } from '@/lib/github';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';

@@ -1,3 +1,6 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSheetData, appendToTable } from '@/lib/sheets';
+
 // POST /api/register - Register for an event
 export async function POST(request: NextRequest) {
   try {
