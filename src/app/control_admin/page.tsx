@@ -20,6 +20,8 @@ export default function AdminDashboard() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [updatingCompany, setUpdatingCompany] = useState<string | null>(null);
 
   useEffect(() => {
     // Redirect if not authenticated or not admin
@@ -80,6 +82,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleToggleCompanyStatus = async (company: Company) => {
+    try {
+      setUpdatingCompany(company.id);
+      setError('');
+      setSuccess('');
+      
+      const response = await fetch('/api/companies', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: company.id,
+          enabled: !company.enabled,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update company');
+      }
+      
+      // Update local state
+      setCompanies(companies.map(c => 
+        c.id === company.id 
+          ? { ...c, enabled: !company.enabled } 
+          : c
+      ));
+      
+      setSuccess(`Company ${company.name} ${!company.enabled ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error('Error updating company:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update company');
+    } finally {
+      setUpdatingCompany(null);
+    }
+  };
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -123,6 +163,12 @@ export default function AdminDashboard() {
             </div>
           )}
           
+          {success && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+              {success}
+            </div>
+          )}
+          
           {loading ? (
             <div className="text-center py-10">Loading companies...</div>
           ) : companies.length === 0 ? (
@@ -154,6 +200,13 @@ export default function AdminDashboard() {
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">{company.name}</h3>
                         <p className="text-sm text-gray-500">@{company.username}</p>
+                        <p className="text-xs mt-1">
+                          <span className={`inline-block px-2 py-1 rounded ${
+                            company.enabled !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {company.enabled !== false ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </p>
                       </div>
                     </div>
                     <div className="flex space-x-2">
@@ -169,6 +222,23 @@ export default function AdminDashboard() {
                       >
                         Edit
                       </Link>
+                      <button
+                        onClick={() => handleToggleCompanyStatus(company)}
+                        disabled={updatingCompany === company.id}
+                        className={`${
+                          company.enabled !== false
+                            ? 'bg-red-100 hover:bg-red-200 text-red-800'
+                            : 'bg-green-100 hover:bg-green-200 text-green-800'
+                        } font-semibold py-2 px-4 rounded ${
+                          updatingCompany === company.id ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        {updatingCompany === company.id
+                          ? 'Updating...'
+                          : company.enabled !== false
+                          ? 'Disable'
+                          : 'Enable'}
+                      </button>
                       <button
                         onClick={() => handleDeleteCompany(company.id)}
                         className="bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded"
