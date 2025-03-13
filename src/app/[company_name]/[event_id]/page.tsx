@@ -6,24 +6,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import RegistrationForm from '@/components/RegistrationForm';
 
-interface FormData {
-  name: string;
-  phone: string;
-  email: string;
-  gender: 'male' | 'female';
-  college: string;
-  status: 'student' | 'graduate';
-  nationalId: string;
-}
-
-interface Event {
-  id: string;
-  name: string;
-  image: string | null;
-  registrations: number;
-  enabled: boolean;
-}
-
 export default function EventPage() {
   const params = useParams();
   const companyName = params.company_name as string;

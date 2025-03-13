@@ -8,6 +8,11 @@ import { authOptions } from '@/lib/auth';
 // GET /api/companies - Get all companies
 export async function GET(request: NextRequest) {
   try {
+    // Check if we're looking for a specific company
+    const searchParams = request.nextUrl.searchParams;
+    const id = searchParams.get('id');
+    const name = searchParams.get('name');
+    
     // Check if user is authenticated
     const session = await getServerSession(authOptions);
     if (!session) {

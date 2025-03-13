@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     
     const registrationHeaders = registrationsData[0];
     const registrations = registrationsData.slice(1).map((row, index) => {
-      const registration: any = { id: index.toString() };
+      const registration: Record<string, string> = { id: index.toString() };
       
       registrationHeaders.forEach((header: string, i: number) => {
         if (header) {
