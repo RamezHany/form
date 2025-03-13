@@ -60,10 +60,19 @@ export async function GET(request: NextRequest) {
           imageUrl = data[i + 2][imageIndex];
         }
         
+        // Find the enabled status if it exists in the headers
+        const enabledIndex = headers.findIndex(h => h === 'Enabled');
+        let enabled = true; // Default to true
+        
+        if (enabledIndex !== -1 && data[i + 2] && data[i + 2][enabledIndex] === 'false') {
+          enabled = false;
+        }
+        
         events.push({
           id: eventName,
           name: eventName,
           image: imageUrl,
+          enabled: enabled,
           registrations: 0, // We'll calculate this later
         });
       }

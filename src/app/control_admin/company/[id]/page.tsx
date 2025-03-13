@@ -11,6 +11,7 @@ interface Event {
   name: string;
   image: string | null;
   registrations: number;
+  enabled?: boolean;
 }
 
 interface Company {
@@ -18,6 +19,7 @@ interface Company {
   name: string;
   username: string;
   image: string | null;
+  enabled?: boolean;
 }
 
 export default function CompanyEventsPage() {
@@ -30,6 +32,8 @@ export default function CompanyEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updating, setUpdating] = useState(false);
+  const [success, setSuccess] = useState('');
 
   const fetchCompanyAndEvents = useCallback(async () => {
     try {
@@ -120,6 +124,82 @@ export default function CompanyEventsPage() {
     }
   };
 
+  const handleToggleCompanyStatus = async () => {
+    if (!company) return;
+    
+    try {
+      setUpdating(true);
+      setError('');
+      setSuccess('');
+      
+      const response = await fetch('/api/companies', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: company.id,
+          enabled: !company.enabled,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update company');
+      }
+      
+      // Update local state
+      setCompany({
+        ...company,
+        enabled: !company.enabled,
+      });
+      
+      setSuccess(`Company ${!company.enabled ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error('Error updating company:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update company');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleToggleEventStatus = async (eventId: string, currentEnabled: boolean) => {
+    if (!company) return;
+    
+    try {
+      setError('');
+      
+      const response = await fetch('/api/events', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyName: company.name,
+          eventName: eventId,
+          enabled: !currentEnabled,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update event');
+      }
+      
+      // Update local state
+      setEvents(events.map(event => 
+        event.id === eventId 
+          ? { ...event, enabled: !currentEnabled } 
+          : event
+      ));
+      
+      setSuccess(`Event ${eventId} ${!currentEnabled ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error('Error updating event:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update event');
+    }
+  };
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -159,12 +239,31 @@ export default function CompanyEventsPage() {
             )}
             <h1 className="text-3xl font-bold text-gray-900">{company.name} Events</h1>
           </div>
-          <Link
-            href="/control_admin"
-            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Back to Dashboard
-          </Link>
+          <div className="flex space-x-2">
+            <button
+              onClick={handleToggleCompanyStatus}
+              disabled={updating}
+              className={`${
+                company.enabled
+                  ? 'bg-red-100 hover:bg-red-200 text-red-800'
+                  : 'bg-green-100 hover:bg-green-200 text-green-800'
+              } font-semibold py-2 px-4 rounded ${
+                updating ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {updating
+                ? 'Updating...'
+                : company.enabled
+                ? 'Disable Company'
+                : 'Enable Company'}
+            </button>
+            <Link
+              href="/control_admin"
+              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
         </div>
       </header>
       
@@ -173,6 +272,18 @@ export default function CompanyEventsPage() {
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+              {success}
+            </div>
+          )}
+          
+          {company.enabled === false && (
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+              This company is currently disabled. Users cannot register for any events.
             </div>
           )}
           
@@ -215,6 +326,16 @@ export default function CompanyEventsPage() {
                         className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-4 rounded"
                       >
                         View Registrations
+                      </button>
+                      <button
+                        onClick={() => handleToggleEventStatus(event.id, event.enabled !== false)}
+                        className={`${
+                          event.enabled !== false
+                            ? 'bg-red-100 hover:bg-red-200 text-red-800'
+                            : 'bg-green-100 hover:bg-green-200 text-green-800'
+                        } font-semibold py-2 px-4 rounded`}
+                      >
+                        {event.enabled !== false ? 'Disable' : 'Enable'}
                       </button>
                       <button
                         onClick={() => handleDeleteEvent(event.id)}
