@@ -20,15 +20,22 @@ export async function GET() {
     // Get companies data from Google Sheets
     const data = await getSheetData('companies');
     
+    console.log('Raw companies data from sheets:', data);
+    
     // Skip header row and map to objects
-    const companies = data.slice(1).map((row) => ({
-      id: row[0],
-      name: row[1],
-      username: row[2],
-      // Don't include password
-      image: row[4] || null,
-      enabled: row[5] !== 'false', // Add enabled status
-    }));
+    const companies = data.slice(1).map((row) => {
+      console.log(`Company ${row[1]} enabled value:`, row[5]);
+      return {
+        id: row[0],
+        name: row[1],
+        username: row[2],
+        // Don't include password
+        image: row[4] || null,
+        enabled: row[5] !== 'false', // Add enabled status
+      };
+    });
+    
+    console.log('Processed companies:', companies);
     
     return NextResponse.json({ companies });
   } catch (error) {
