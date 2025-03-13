@@ -58,7 +58,10 @@ export default function CompanyEventsPage() {
       }
       
       console.log('Current company from API:', currentCompany);
-      console.log('Current company enabled value:', currentCompany.enabled);
+      console.log('Current company enabled value (raw):', currentCompany.enabled);
+      console.log('Current company enabled value type:', typeof currentCompany.enabled);
+      console.log('Current company enabled === true:', currentCompany.enabled === true);
+      console.log('Current company enabled == true:', currentCompany.enabled == true);
       
       setCompany(currentCompany);
       
