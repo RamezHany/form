@@ -19,7 +19,7 @@ interface Event {
   id: string;
   name: string;
   image: string | null;
-  registrations: number;
+  enabled: boolean;
 }
 
 export default function EventRegistrationPage() {
@@ -44,6 +44,7 @@ export default function EventRegistrationPage() {
   const [success, setSuccess] = useState(false);
   const [eventImage, setEventImage] = useState<string | null>(null);
   const [exactEventName, setExactEventName] = useState<string | null>(null);
+  const [eventEnabled, setEventEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     // Fetch event details to verify it exists and get the image
@@ -73,6 +74,7 @@ export default function EventRegistrationPage() {
         
         console.log('Found matching event:', event);
         setExactEventName(event.id); // Store the exact event name from the API
+        setEventEnabled(event.enabled !== false); // Set event enabled status
         
         if (event.image) {
           setEventImage(event.image);
@@ -191,6 +193,19 @@ export default function EventRegistrationPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center">
           <div className="text-red-500 text-xl mb-4">{error}</div>
+          <Link href="/" className="text-blue-500 hover:underline">
+            Return to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!eventEnabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center">
+          <div className="text-red-500 text-xl mb-4">Registration has ended for this event.</div>
           <Link href="/" className="text-blue-500 hover:underline">
             Return to Home
           </Link>

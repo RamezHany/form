@@ -47,6 +47,13 @@ export const authOptions: NextAuthOptions = {
             );
             
             if (company) {
+              // Check if company is enabled
+              const isEnabled = company[5] !== 'false'; // If enabled column exists and is 'false', company is disabled
+              
+              if (!isEnabled) {
+                throw new Error('Company account is disabled. Please contact the administrator.');
+              }
+              
               // Check password
               const passwordMatch = await bcrypt.compare(
                 credentials.password,
@@ -59,12 +66,14 @@ export const authOptions: NextAuthOptions = {
                   name: company[1], // Company name
                   image: company[4] || null, // Company image URL
                   type: 'company',
+                  enabled: isEnabled,
                 };
               }
             }
           }
         } catch (error) {
           console.error('Authentication error:', error);
+          throw error; // Re-throw to show the error message to the user
         }
 
         return null;
@@ -82,6 +91,9 @@ export const authOptions: NextAuthOptions = {
         if (user.image) {
           token.picture = user.image;
         }
+        if (user.enabled !== undefined) {
+          token.enabled = user.enabled;
+        }
       }
       return token;
     },
@@ -91,6 +103,9 @@ export const authOptions: NextAuthOptions = {
         session.user.type = token.type as string;
         if (token.picture) {
           session.user.image = token.picture as string;
+        }
+        if (token.enabled !== undefined) {
+          session.user.enabled = token.enabled as boolean;
         }
       }
       return session;
@@ -108,6 +123,7 @@ declare module 'next-auth' {
     id: string;
     type: string;
     image?: string;
+    enabled?: boolean;
   }
   
   interface Session {
@@ -117,6 +133,7 @@ declare module 'next-auth' {
       email?: string | null;
       image?: string | null;
       type: string;
+      enabled?: boolean;
     };
   }
 } 

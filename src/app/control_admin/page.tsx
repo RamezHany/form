@@ -11,6 +11,7 @@ interface Company {
   name: string;
   username: string;
   image: string | null;
+  enabled?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -161,6 +162,12 @@ export default function AdminDashboard() {
                         className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-2 px-4 rounded"
                       >
                         View Events
+                      </Link>
+                      <Link
+                        href={`/control_admin/edit-company/${company.id}`}
+                        className="bg-green-100 hover:bg-green-200 text-green-800 font-semibold py-2 px-4 rounded"
+                      >
+                        Edit
                       </Link>
                       <button
                         onClick={() => handleDeleteCompany(company.id)}

@@ -362,4 +362,43 @@ export const deleteTable = async (sheetName: string, tableName: string) => {
     console.error(`Error deleting table ${tableName} from sheet ${sheetName}:`, error);
     throw error;
   }
+};
+
+// Update data in a specific row of a table
+export const updateTableData = async (sheetName: string, tableName: string, rowIndex: number, rowData: unknown[]) => {
+  try {
+    // Get the sheet data
+    const data = await getSheetData(sheetName);
+    
+    // Find the table
+    let tableStartIndex = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].length === 1 && data[i][0] === tableName) {
+        tableStartIndex = i;
+        break;
+      }
+    }
+    
+    if (tableStartIndex === -1) {
+      throw new Error(`Table ${tableName} not found in sheet ${sheetName}`);
+    }
+    
+    // Calculate the row to update (table start + header row + rowIndex)
+    const rowToUpdate = tableStartIndex + 1 + rowIndex;
+    
+    // Update the row
+    const response = await sheets.spreadsheets.values.update({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: `${sheetName}!A${rowToUpdate + 1}`, // +1 because sheets are 1-indexed
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [rowData],
+      },
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating table data in ${sheetName}/${tableName}:`, error);
+    throw error;
+  }
 }; 

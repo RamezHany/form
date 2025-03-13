@@ -185,4 +185,106 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// PATCH /api/companies - Update company details
+export async function PATCH(request: NextRequest) {
+  try {
+    // Check if user is authenticated as admin
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.type !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Parse request body
+    const { id, name, username, password, image, enabled } = await request.json();
+    
+    // Validate required fields
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Company ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Get companies data
+    const data = await getSheetData('companies');
+    const companies = data.slice(1); // Skip header row
+    
+    // Find the company to update
+    const companyIndex = companies.findIndex((row) => row[0] === id);
+    
+    if (companyIndex === -1) {
+      return NextResponse.json(
+        { error: 'Company not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Check if username already exists (if changing username)
+    if (username && username !== companies[companyIndex][2]) {
+      if (companies.some((row) => row[2] === username && row[0] !== id)) {
+        return NextResponse.json(
+          { error: 'Username already exists' },
+          { status: 400 }
+        );
+      }
+    }
+    
+    // Prepare updated company data
+    const updatedCompany = [...companies[companyIndex]];
+    
+    // Update fields if provided
+    if (name) updatedCompany[1] = name;
+    if (username) updatedCompany[2] = username;
+    
+    // Hash and update password if provided
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updatedCompany[3] = hashedPassword;
+    }
+    
+    // Upload and update image if provided
+    if (image) {
+      const fileName = `company_${id}_${Date.now()}.jpg`;
+      const uploadResult = await uploadImage(fileName, image, 'companies');
+      
+      if (uploadResult.success) {
+        updatedCompany[4] = uploadResult.url;
+      }
+    }
+    
+    // Update enabled status if provided (add a new column if it doesn't exist)
+    if (enabled !== undefined) {
+      if (updatedCompany.length <= 5) {
+        updatedCompany[5] = enabled ? 'true' : 'false';
+      } else {
+        updatedCompany[5] = enabled ? 'true' : 'false';
+      }
+    }
+    
+    // Delete the old row and insert the updated one
+    await deleteRow('companies', companyIndex + 2); // +2 because of 0-indexing and header row
+    await appendToSheet('companies', [updatedCompany]);
+    
+    return NextResponse.json({ 
+      success: true,
+      company: {
+        id: updatedCompany[0],
+        name: updatedCompany[1],
+        username: updatedCompany[2],
+        image: updatedCompany[4] || null,
+        enabled: updatedCompany[5] === 'true'
+      }
+    });
+  } catch (error) {
+    console.error('Error updating company:', error);
+    return NextResponse.json(
+      { error: 'Failed to update company' },
+      { status: 500 }
+    );
+  }
 } 

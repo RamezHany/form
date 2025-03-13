@@ -66,9 +66,35 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if the company exists
+    // Check if the company exists and is enabled
     try {
       console.log('Checking if company exists:', companyName);
+      
+      // First, check if the company is enabled
+      const companiesData = await getSheetData('companies');
+      const companies = companiesData.slice(1); // Skip header row
+      
+      // Find the company by name
+      const company = companies.find((row) => row[1] === companyName);
+      
+      if (!company) {
+        console.error(`Company ${companyName} not found in companies list`);
+        return NextResponse.json(
+          { error: 'Company not found' },
+          { status: 404 }
+        );
+      }
+      
+      // Check if company is enabled
+      const isEnabled = company[5] !== 'false';
+      if (!isEnabled) {
+        console.error(`Company ${companyName} is disabled`);
+        return NextResponse.json(
+          { error: 'Registration is unavailable for this company' },
+          { status: 403 }
+        );
+      }
+      
       const sheetData = await getSheetData(companyName);
       
       if (!sheetData || sheetData.length === 0) {
@@ -79,7 +105,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Check if the event exists
+      // Check if the event exists and is enabled
       try {
         console.log('Checking if event exists:', { companyName, eventName });
         const tableData = await getTableData(companyName, eventName);
@@ -90,6 +116,21 @@ export async function POST(request: NextRequest) {
             { error: 'Event not found' },
             { status: 404 }
           );
+        }
+        
+        // Check if the event is enabled
+        // The event enabled status is stored in the first row after headers, in the last column
+        if (tableData.length > 1 && tableData[1].length > 0) {
+          const lastColumnIndex = tableData[1].length - 1;
+          const isEventEnabled = tableData[1][lastColumnIndex] !== 'false';
+          
+          if (!isEventEnabled) {
+            console.error(`Event ${eventName} is disabled`);
+            return NextResponse.json(
+              { error: 'Registration has ended for this event' },
+              { status: 403 }
+            );
+          }
         }
         
         // Check if the person is already registered (by email or phone)

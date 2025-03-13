@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, createTable, getTableData, deleteTable } from '@/lib/sheets';
+import { getSheetData, createTable, getTableData, deleteTable, updateTableData } from '@/lib/sheets';
 import { uploadImage } from '@/lib/github';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -144,16 +144,20 @@ export async function POST(request: NextRequest) {
       'National ID',
       'Registration Date',
       'Image', // For the event banner
+      'Enabled', // New field for event status
     ];
     
     // Create the event table in the company sheet
     await createTable(companyName, eventName, headers);
     
     // If image was uploaded, add it as the first row in the table
-    if (imageUrl) {
-      // We'll use the addToTable function from sheets.ts
-      // But for now, we'll just return the event data
-    }
+    // Also set the event as enabled by default
+    const firstRow = Array(headers.length).fill('');
+    firstRow[headers.indexOf('Image')] = imageUrl || '';
+    firstRow[headers.indexOf('Enabled')] = 'true'; // Enable by default
+    
+    // Add the first row with image and enabled status
+    await updateTableData(companyName, eventName, 1, firstRow);
     
     return NextResponse.json({
       success: true,
@@ -161,6 +165,7 @@ export async function POST(request: NextRequest) {
         id: eventName,
         name: eventName,
         image: imageUrl,
+        enabled: true,
         registrationUrl: `${process.env.NEXTAUTH_URL}/${companyName}/${eventName}`,
       },
     });
@@ -216,6 +221,102 @@ export async function DELETE(request: NextRequest) {
     console.error('Error deleting event:', error);
     return NextResponse.json(
       { error: 'Failed to delete event' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/events - Update event details (enable/disable)
+export async function PATCH(request: NextRequest) {
+  try {
+    // Check if user is authenticated
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Parse request body
+    const { companyName, eventName, enabled, image } = await request.json();
+    
+    // Validate required fields
+    if (!companyName || !eventName) {
+      return NextResponse.json(
+        { error: 'Company name and event name are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Check if user is admin or the company owner
+    if (session.user.type !== 'admin' && session.user.name !== companyName) {
+      return NextResponse.json(
+        { error: 'Unauthorized to update events for this company' },
+        { status: 403 }
+      );
+    }
+    
+    // Get the event data
+    const tableData = await getTableData(companyName, eventName);
+    
+    if (!tableData || tableData.length === 0) {
+      return NextResponse.json(
+        { error: 'Event not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Get the headers
+    const headers = tableData[0];
+    
+    // Prepare the updated first row
+    let firstRow = tableData.length > 1 ? [...tableData[1]] : Array(headers.length).fill('');
+    
+    // Update image if provided
+    if (image) {
+      const fileName = `event_${companyName}_${eventName}_${Date.now()}.jpg`;
+      const uploadResult = await uploadImage(fileName, image, 'events');
+      
+      if (uploadResult.success) {
+        const imageIndex = headers.indexOf('Image');
+        if (imageIndex !== -1) {
+          firstRow[imageIndex] = uploadResult.url;
+        }
+      }
+    }
+    
+    // Update enabled status if provided
+    if (enabled !== undefined) {
+      const enabledIndex = headers.indexOf('Enabled');
+      if (enabledIndex !== -1) {
+        firstRow[enabledIndex] = enabled ? 'true' : 'false';
+      } else {
+        // If 'Enabled' column doesn't exist, add it
+        headers.push('Enabled');
+        firstRow.push(enabled ? 'true' : 'false');
+        
+        // Update headers
+        await updateTableData(companyName, eventName, 0, headers);
+      }
+    }
+    
+    // Update the first row
+    await updateTableData(companyName, eventName, 1, firstRow);
+    
+    return NextResponse.json({
+      success: true,
+      event: {
+        id: eventName,
+        name: eventName,
+        image: firstRow[headers.indexOf('Image')] || null,
+        enabled: firstRow[headers.indexOf('Enabled')] === 'true',
+      },
+    });
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return NextResponse.json(
+      { error: 'Failed to update event' },
       { status: 500 }
     );
   }
