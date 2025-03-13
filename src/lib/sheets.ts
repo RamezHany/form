@@ -401,4 +401,25 @@ export const updateTableData = async (sheetName: string, tableName: string, rowI
     console.error(`Error updating table data in ${sheetName}/${tableName}:`, error);
     throw error;
   }
+};
+
+// Export sheets for direct access if needed
+export { sheets };
+
+// Update a specific row in a sheet
+export const updateRow = async (sheetName: string, rowIndex: number, values: unknown[]) => {
+  try {
+    const response = await sheets.spreadsheets.values.update({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: `${sheetName}!A${rowIndex + 1}`, // +1 because sheets API is 1-indexed
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [values],
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating row in sheet ${sheetName}:`, error);
+    throw error;
+  }
 }; 

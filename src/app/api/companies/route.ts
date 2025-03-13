@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, appendToSheet, createSheet, deleteRow } from '@/lib/sheets';
+import { getSheetData, appendToSheet, createSheet, deleteRow, updateRow } from '@/lib/sheets';
 import { uploadImage } from '@/lib/github';
 import bcrypt from 'bcryptjs';
 import { getServerSession } from 'next-auth';
@@ -267,9 +267,15 @@ export async function PATCH(request: NextRequest) {
       }
     }
     
-    // Delete the old row and insert the updated one
-    await deleteRow('companies', companyIndex + 2); // +2 because of 0-indexing and header row
-    await appendToSheet('companies', [updatedCompany]);
+    // Update the company in the sheet
+    // companyIndex is 0-based index in the companies array (after skipping header)
+    // For updateRow, we need the actual row index in the sheet (header is at index 0)
+    // So we add 1 to account for the header row
+    const rowToUpdate = companyIndex + 1;
+    console.log(`Updating company at index ${companyIndex}, row ${rowToUpdate} in sheet`);
+    
+    // Update the company row directly
+    await updateRow('companies', rowToUpdate, updatedCompany);
     
     return NextResponse.json({ 
       success: true,
