@@ -148,13 +148,18 @@ export default function CompanyEventsPage() {
         throw new Error(errorData.error || 'Failed to update company');
       }
       
-      // Update local state
+      // Update local state temporarily
       setCompany({
         ...company,
         enabled: !company.enabled,
       });
       
       setSuccess(`Company ${!company.enabled ? 'enabled' : 'disabled'} successfully`);
+      
+      // Reload data from server after a short delay
+      setTimeout(() => {
+        fetchCompanyAndEvents();
+      }, 1000);
     } catch (error) {
       console.error('Error updating company:', error);
       setError(error instanceof Error ? error.message : 'Failed to update company');
