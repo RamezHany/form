@@ -110,12 +110,21 @@ export default function EventRegistrationsPage() {
   }, [status, session, router, fetchEventDetails, fetchRegistrations]);
 
   const handleToggleEventStatus = async () => {
-    if (!session?.user?.name || !eventDetails) return;
+    if (!eventDetails) return;
     
     try {
       setUpdating(true);
       setError('');
       setSuccess('');
+      
+      // الحصول على القيمة الحالية لـ enabled
+      const currentEnabled = eventDetails.enabled === true;
+      console.log('Current event enabled value before toggle (raw):', eventDetails.enabled);
+      console.log('Current event enabled value before toggle (processed):', currentEnabled);
+      
+      // القيمة الجديدة هي عكس القيمة الحالية
+      const newEnabledValue = !currentEnabled;
+      console.log('New enabled value to send to API:', newEnabledValue);
       
       const response = await fetch('/api/events', {
         method: 'PATCH',
@@ -123,24 +132,36 @@ export default function EventRegistrationsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          companyName: session.user.name,
+          companyName: session?.user?.name,
           eventName: eventId,
-          enabled: !eventDetails.enabled,
+          enabled: newEnabledValue,
         }),
       });
       
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update event');
+        throw new Error(responseData.error || 'Failed to update event');
       }
       
-      // Update local state
+      console.log('Response from API after toggle:', responseData);
+      
+      // تحديث حالة الحدث في واجهة المستخدم
       setEventDetails({
         ...eventDetails,
-        enabled: !eventDetails.enabled,
+        enabled: newEnabledValue
       });
       
-      setSuccess(`Event ${!eventDetails.enabled ? 'enabled' : 'disabled'} successfully`);
+      console.log('Updated event enabled value in state:', newEnabledValue);
+      
+      const statusText = newEnabledValue ? 'مفعل' : 'معطل';
+      setSuccess(`تم تحديث حالة الحدث بنجاح. الحدث الآن ${statusText}`);
+      
+      // إعادة تحميل البيانات من الخادم بعد فترة قصيرة
+      setTimeout(() => {
+        console.log('Reloading data from server...');
+        fetchEventAndRegistrations();
+      }, 1000);
     } catch (error) {
       console.error('Error updating event:', error);
       setError(error instanceof Error ? error.message : 'Failed to update event');
@@ -248,7 +269,7 @@ export default function EventRegistrationsPage() {
                   onClick={handleToggleEventStatus}
                   disabled={updating}
                   className={`${
-                    eventDetails.enabled
+                    eventDetails.enabled === true
                       ? 'bg-red-100 hover:bg-red-200 text-red-800'
                       : 'bg-green-100 hover:bg-green-200 text-green-800'
                   } font-semibold py-2 px-4 rounded ${
@@ -256,10 +277,10 @@ export default function EventRegistrationsPage() {
                   }`}
                 >
                   {updating
-                    ? 'Updating...'
-                    : eventDetails.enabled
-                    ? 'Disable Event'
-                    : 'Enable Event'}
+                    ? 'جاري التحديث...'
+                    : eventDetails.enabled === true
+                    ? 'تعطيل الحدث'
+                    : 'تفعيل الحدث'}
                 </button>
               )}
             </div>
@@ -278,6 +299,12 @@ export default function EventRegistrationsPage() {
                     ? 'Users can register for this event.'
                     : 'Registration is closed for this event.'}
                 </p>
+              </div>
+            )}
+            
+            {eventDetails.enabled === false && (
+              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+                هذا الحدث معطل حالياً. لا يمكن للمستخدمين التسجيل فيه.
               </div>
             )}
             

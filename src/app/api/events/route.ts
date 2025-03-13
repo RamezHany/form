@@ -4,93 +4,226 @@ import { uploadImage } from '@/lib/github';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-// GET /api/events?company={companyName} - Get all events for a company
+// GET /api/events - Get all events or events for a specific company
 export async function GET(request: NextRequest) {
   try {
-    // Check if user is authenticated
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get company name from query parameters
     const { searchParams } = new URL(request.url);
-    const rawCompanyName = searchParams.get('company');
+    const companyName = searchParams.get('company');
     
-    if (!rawCompanyName) {
-      return NextResponse.json(
-        { error: 'Company name is required' },
-        { status: 400 }
+    if (companyName) {
+      console.log(`Getting events for company: ${companyName}`);
+      
+      // Get data from the company's sheet
+      const data = await getSheetData(companyName);
+      
+      // Find all tables in the sheet
+      const events = [];
+      let currentTable = null;
+      let tableStartRow = -1;
+      let tableEndRow = -1;
+      
+      // Get headers and find the index of the "الحالة" column for events
+      const headers = data[0] || [];
+      const statusColumnIndex = headers.findIndex(header => 
+        header === 'الحالة' || header === 'Enabled' || header === 'enabled'
       );
-    }
-    
-    // Ensure company name is properly decoded
-    const companyName = decodeURIComponent(rawCompanyName);
-    console.log('Getting events for company:', companyName);
-    
-    // Check if user is admin or the company owner
-    if (session.user.type !== 'admin' && session.user.name !== companyName) {
-      return NextResponse.json(
-        { error: 'Unauthorized to access this company\'s events' },
-        { status: 403 }
-      );
-    }
-    
-    // Get company sheet data
-    const data = await getSheetData(companyName);
-    
-    // Find all tables (events) in the sheet
-    const events = [];
-    for (let i = 0; i < data.length; i++) {
-      // If a row has only one cell and it's not empty, it's likely a table name (event)
-      if (data[i].length === 1 && data[i][0] && !data[i][0].startsWith('ID')) {
-        const eventName = data[i][0];
+      
+      console.log('Event headers:', headers);
+      console.log('Event status column index:', statusColumnIndex);
+      
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
         
-        // Get the next row for headers
-        const headers = data[i + 1] || [];
+        // Check if this is a table header row
+        if (row[0] && !row[0].startsWith('Registration')) {
+          // If we were processing a table, add it to the events
+          if (currentTable) {
+            // Count registrations (rows between tableStartRow + 1 and tableEndRow)
+            const registrations = Math.max(0, tableEndRow - tableStartRow);
+            
+            // Find image URL if it exists
+            const imageColumnIndex = data[tableStartRow].findIndex(
+              (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+            );
+            
+            let imageUrl = null;
+            if (imageColumnIndex !== -1 && data[tableStartRow + 1][imageColumnIndex]) {
+              imageUrl = data[tableStartRow + 1][imageColumnIndex];
+            }
+            
+            // Find enabled status if it exists
+            let isEnabled = true; // Default to enabled
+            if (statusColumnIndex !== -1 && data[tableStartRow + 1][statusColumnIndex] !== undefined) {
+              const statusValue = data[tableStartRow + 1][statusColumnIndex];
+              isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+            }
+            
+            events.push({
+              id: currentTable,
+              name: currentTable,
+              registrations,
+              image: imageUrl,
+              enabled: isEnabled
+            });
+          }
+          
+          // Start a new table
+          currentTable = row[0];
+          tableStartRow = i;
+          tableEndRow = i + 1; // At least include the header row
+        } else if (currentTable && row.some((cell) => cell)) {
+          // This is a data row for the current table
+          tableEndRow = i + 1;
+        }
+      }
+      
+      // Add the last table if there was one
+      if (currentTable) {
+        // Count registrations (rows between tableStartRow + 1 and tableEndRow)
+        const registrations = Math.max(0, tableEndRow - tableStartRow - 1);
         
-        // Find the image URL if it exists in the headers
-        const imageIndex = headers.findIndex(h => h === 'Image');
+        // Find image URL if it exists
+        const imageColumnIndex = data[tableStartRow].findIndex(
+          (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+        );
+        
         let imageUrl = null;
-        
-        if (imageIndex !== -1 && data[i + 2] && data[i + 2][imageIndex]) {
-          imageUrl = data[i + 2][imageIndex];
+        if (imageColumnIndex !== -1 && data[tableStartRow + 1][imageColumnIndex]) {
+          imageUrl = data[tableStartRow + 1][imageColumnIndex];
         }
         
-        // Find the enabled status if it exists in the headers
-        const enabledIndex = headers.findIndex(h => h === 'Enabled');
-        let enabled = true; // Default to true
-        
-        if (enabledIndex !== -1 && data[i + 2] && data[i + 2][enabledIndex] === 'false') {
-          enabled = false;
+        // Find enabled status if it exists
+        let isEnabled = true; // Default to enabled
+        if (statusColumnIndex !== -1 && data[tableStartRow + 1][statusColumnIndex] !== undefined) {
+          const statusValue = data[tableStartRow + 1][statusColumnIndex];
+          isEnabled = statusValue === 'true' || statusValue === 'مفعل';
         }
         
         events.push({
-          id: eventName,
-          name: eventName,
+          id: currentTable,
+          name: currentTable,
+          registrations,
           image: imageUrl,
-          enabled: enabled,
-          registrations: 0, // We'll calculate this later
+          enabled: isEnabled
         });
       }
-    }
-    
-    // Calculate registrations for each event
-    for (const event of events) {
-      try {
-        const eventData = await getTableData(companyName, event.id);
-        // Subtract 1 for the header row
-        event.registrations = Math.max(0, eventData.length - 1);
-      } catch (error) {
-        console.error(`Error getting data for event ${event.id}:`, error);
-        // Continue with the next event
+      
+      return NextResponse.json({ events });
+    } else {
+      // Get all companies
+      const companiesData = await getSheetData('companies');
+      const companies = companiesData.slice(1).map((row) => row[1]); // Get company names
+      
+      // Get events for each company
+      const allEvents = [];
+      
+      for (const company of companies) {
+        try {
+          const companyData = await getSheetData(company);
+          
+          // Find all tables in the sheet
+          let currentTable = null;
+          let tableStartRow = -1;
+          let tableEndRow = -1;
+          
+          // Get headers and find the index of the "الحالة" column for events
+          const headers = companyData[0] || [];
+          const statusColumnIndex = headers.findIndex(header => 
+            header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+          );
+          
+          for (let i = 0; i < companyData.length; i++) {
+            const row = companyData[i];
+            
+            // Check if this is a table header row
+            if (row[0] && !row[0].startsWith('Registration')) {
+              // If we were processing a table, add it to the events
+              if (currentTable) {
+                // Count registrations (rows between tableStartRow + 1 and tableEndRow)
+                const registrations = Math.max(0, tableEndRow - tableStartRow - 1);
+                
+                // Find image URL if it exists
+                const imageColumnIndex = companyData[tableStartRow].findIndex(
+                  (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+                );
+                
+                let imageUrl = null;
+                if (
+                  imageColumnIndex !== -1 &&
+                  companyData[tableStartRow + 1][imageColumnIndex]
+                ) {
+                  imageUrl = companyData[tableStartRow + 1][imageColumnIndex];
+                }
+                
+                // Find enabled status if it exists
+                let isEnabled = true; // Default to enabled
+                if (statusColumnIndex !== -1 && companyData[tableStartRow + 1][statusColumnIndex] !== undefined) {
+                  const statusValue = companyData[tableStartRow + 1][statusColumnIndex];
+                  isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+                }
+                
+                allEvents.push({
+                  id: currentTable,
+                  name: currentTable,
+                  company,
+                  registrations,
+                  image: imageUrl,
+                  enabled: isEnabled
+                });
+              }
+              
+              // Start a new table
+              currentTable = row[0];
+              tableStartRow = i;
+              tableEndRow = i + 1; // At least include the header row
+            } else if (currentTable && row.some((cell) => cell)) {
+              // This is a data row for the current table
+              tableEndRow = i + 1;
+            }
+          }
+          
+          // Add the last table if there was one
+          if (currentTable) {
+            // Count registrations (rows between tableStartRow + 1 and tableEndRow)
+            const registrations = Math.max(0, tableEndRow - tableStartRow - 1);
+            
+            // Find image URL if it exists
+            const imageColumnIndex = companyData[tableStartRow].findIndex(
+              (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+            );
+            
+            let imageUrl = null;
+            if (
+              imageColumnIndex !== -1 &&
+              companyData[tableStartRow + 1][imageColumnIndex]
+            ) {
+              imageUrl = companyData[tableStartRow + 1][imageColumnIndex];
+            }
+            
+            // Find enabled status if it exists
+            let isEnabled = true; // Default to enabled
+            if (statusColumnIndex !== -1 && companyData[tableStartRow + 1][statusColumnIndex] !== undefined) {
+              const statusValue = companyData[tableStartRow + 1][statusColumnIndex];
+              isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+            }
+            
+            allEvents.push({
+              id: currentTable,
+              name: currentTable,
+              company,
+              registrations,
+              image: imageUrl,
+              enabled: isEnabled
+            });
+          }
+        } catch (error) {
+          console.error(`Error getting events for company ${company}:`, error);
+          // Continue with other companies
+        }
       }
+      
+      return NextResponse.json({ events: allEvents });
     }
-    
-    return NextResponse.json({ events });
   } catch (error) {
     console.error('Error getting events:', error);
     return NextResponse.json(
@@ -235,7 +368,7 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// PATCH /api/events - Update event details (enable/disable)
+// PATCH /api/events - Update event details
 export async function PATCH(request: NextRequest) {
   try {
     // Check if user is authenticated
@@ -248,7 +381,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Parse request body
-    const { companyName, eventName, enabled, image } = await request.json();
+    const { companyName, eventName, image, enabled } = await request.json();
     
     // Validate required fields
     if (!companyName || !eventName) {
@@ -258,68 +391,113 @@ export async function PATCH(request: NextRequest) {
       );
     }
     
-    // Check if user is admin or the company owner
-    if (session.user.type !== 'admin' && session.user.name !== companyName) {
+    // Check if user is authorized (admin or the company owner)
+    if (
+      session.user.type !== 'admin' &&
+      session.user.type !== 'company' &&
+      session.user.name !== companyName
+    ) {
       return NextResponse.json(
-        { error: 'Unauthorized to update events for this company' },
+        { error: 'Unauthorized to update this event' },
         { status: 403 }
       );
     }
     
-    // Get the event data
-    const tableData = await getTableData(companyName, eventName);
+    // Get data from the company's sheet
+    const data = await getSheetData(companyName);
     
-    if (!tableData || tableData.length === 0) {
+    // Find the event table
+    let tableStartRow = -1;
+    
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][0] === eventName) {
+        tableStartRow = i;
+        break;
+      }
+    }
+    
+    if (tableStartRow === -1) {
       return NextResponse.json(
         { error: 'Event not found' },
         { status: 404 }
       );
     }
     
-    // Get the headers
-    const headers = tableData[0];
+    // Get the headers row
+    const headers = data[tableStartRow];
     
-    // Prepare the updated first row
-    const firstRow = tableData.length > 1 ? [...tableData[1]] : Array(headers.length).fill('');
+    // Find or add the image column
+    let imageColumnIndex = headers.findIndex(
+      (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+    );
+    
+    if (imageColumnIndex === -1 && image) {
+      // Add Image column if it doesn't exist
+      headers.push('الصورة');
+      imageColumnIndex = headers.length - 1;
+      
+      // Update the headers row
+      await updateTableData(companyName, eventName, 0, headers);
+    }
+    
+    // Find or add the status column
+    let statusColumnIndex = headers.findIndex(
+      (cell) => cell === 'الحالة' || cell === 'Enabled' || cell === 'enabled'
+    );
+    
+    if (statusColumnIndex === -1 && enabled !== undefined) {
+      // Add Status column if it doesn't exist
+      headers.push('الحالة');
+      statusColumnIndex = headers.length - 1;
+      
+      // Update the headers row
+      await updateTableData(companyName, eventName, 0, headers);
+    }
+    
+    // Get the data row (first row after headers)
+    const dataRow = data[tableStartRow + 1] || [];
+    const updatedDataRow = [...dataRow];
     
     // Update image if provided
-    if (image) {
+    if (image && imageColumnIndex !== -1) {
+      // Upload image to GitHub
       const fileName = `event_${companyName}_${eventName}_${Date.now()}.jpg`;
       const uploadResult = await uploadImage(fileName, image, 'events');
       
       if (uploadResult.success) {
-        const imageIndex = headers.indexOf('Image');
-        if (imageIndex !== -1) {
-          firstRow[imageIndex] = uploadResult.url;
+        // Ensure the data row is long enough
+        while (updatedDataRow.length <= imageColumnIndex) {
+          updatedDataRow.push('');
         }
+        
+        updatedDataRow[imageColumnIndex] = uploadResult.url;
       }
     }
     
     // Update enabled status if provided
-    if (enabled !== undefined) {
-      const enabledIndex = headers.indexOf('Enabled');
-      if (enabledIndex !== -1) {
-        firstRow[enabledIndex] = enabled ? 'true' : 'false';
-      } else {
-        // If 'Enabled' column doesn't exist, add it
-        headers.push('Enabled');
-        firstRow.push(enabled ? 'true' : 'false');
-        
-        // Update headers
-        await updateTableData(companyName, eventName, 0, headers);
+    if (enabled !== undefined && statusColumnIndex !== -1) {
+      // Ensure the data row is long enough
+      while (updatedDataRow.length <= statusColumnIndex) {
+        updatedDataRow.push('');
       }
+      
+      // Convert boolean to appropriate string value
+      updatedDataRow[statusColumnIndex] = enabled ? 'مفعل' : 'معطل';
     }
     
-    // Update the first row
-    await updateTableData(companyName, eventName, 1, firstRow);
+    // Update the data row
+    await updateTableData(companyName, eventName, 1, updatedDataRow);
     
     return NextResponse.json({
       success: true,
       event: {
         id: eventName,
         name: eventName,
-        image: firstRow[headers.indexOf('Image')] || null,
-        enabled: firstRow[headers.indexOf('Enabled')] === 'true',
+        company: companyName,
+        image: imageColumnIndex !== -1 ? updatedDataRow[imageColumnIndex] : null,
+        enabled: statusColumnIndex !== -1 ? 
+          (updatedDataRow[statusColumnIndex] === 'مفعل' || updatedDataRow[statusColumnIndex] === 'true') : 
+          true
       },
     });
   } catch (error) {

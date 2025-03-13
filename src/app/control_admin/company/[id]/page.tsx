@@ -140,9 +140,14 @@ export default function CompanyEventsPage() {
       setError('');
       setSuccess('');
       
-      console.log('Current company enabled value before toggle:', company.enabled);
-      const newEnabledValue = !(company.enabled === true);
-      console.log('Sending enabled value to API:', newEnabledValue);
+      // الحصول على القيمة الحالية لـ enabled
+      const currentEnabled = company.enabled === true;
+      console.log('Current company enabled value before toggle (raw):', company.enabled);
+      console.log('Current company enabled value before toggle (processed):', currentEnabled);
+      
+      // القيمة الجديدة هي عكس القيمة الحالية
+      const newEnabledValue = !currentEnabled;
+      console.log('New enabled value to send to API:', newEnabledValue);
       
       const response = await fetch('/api/companies', {
         method: 'PATCH',
@@ -164,17 +169,20 @@ export default function CompanyEventsPage() {
       console.log('Response from API after toggle:', responseData);
       console.log('Company enabled value in response:', responseData.company.enabled);
       
-      // Update local state temporarily
-      setCompany({
+      // تحديث حالة الشركة في واجهة المستخدم مباشرة من استجابة الخادم
+      const updatedCompany = {
         ...company,
-        enabled: newEnabledValue,
-      });
+        enabled: responseData.company.enabled
+      };
       
-      console.log('Updated company enabled value in state:', newEnabledValue);
+      setCompany(updatedCompany);
       
-      setSuccess(`Company ${newEnabledValue ? 'enabled' : 'disabled'} successfully`);
+      console.log('Updated company enabled value in state:', updatedCompany.enabled);
       
-      // Reload data from server after a short delay
+      const statusText = newEnabledValue ? 'مفعلة' : 'معطلة';
+      setSuccess(`تم تحديث حالة الشركة بنجاح. الشركة الآن ${statusText}`);
+      
+      // إعادة تحميل البيانات من الخادم بعد فترة قصيرة
       setTimeout(() => {
         console.log('Reloading data from server...');
         fetchCompanyAndEvents();
@@ -193,9 +201,11 @@ export default function CompanyEventsPage() {
     try {
       setError('');
       
-      console.log(`Current event ${eventId} enabled value before toggle:`, currentEnabled);
+      console.log(`Current event ${eventId} enabled value before toggle (raw):`, currentEnabled);
+      
+      // القيمة الجديدة هي عكس القيمة الحالية
       const newEnabledValue = !currentEnabled;
-      console.log(`Sending enabled value to API for event ${eventId}:`, newEnabledValue);
+      console.log(`New enabled value to send to API for event ${eventId}:`, newEnabledValue);
       
       const response = await fetch('/api/events', {
         method: 'PATCH',
@@ -209,12 +219,16 @@ export default function CompanyEventsPage() {
         }),
       });
       
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update event');
+        throw new Error(responseData.error || 'Failed to update event');
       }
       
-      // Update local state
+      console.log(`Response from API after toggling event ${eventId}:`, responseData);
+      
+      // تحديث حالة الحدث في واجهة المستخدم
+      // نستخدم القيمة التي أرسلناها لأن API قد لا يعيد الحدث المحدث
       setEvents(events.map(event => 
         event.id === eventId 
           ? { ...event, enabled: newEnabledValue } 
@@ -225,7 +239,7 @@ export default function CompanyEventsPage() {
       
       setSuccess(`Event ${eventId} ${newEnabledValue ? 'enabled' : 'disabled'} successfully`);
       
-      // Refresh events list after a short delay
+      // إعادة تحميل البيانات من الخادم بعد فترة قصيرة
       setTimeout(() => {
         console.log(`Reloading events data for event ${eventId}...`);
         fetchCompanyAndEvents();
@@ -288,16 +302,16 @@ export default function CompanyEventsPage() {
               }`}
             >
               {updating
-                ? 'Updating...'
+                ? 'جاري التحديث...'
                 : company.enabled === true
-                ? 'Disable Company'
-                : 'Enable Company'}
+                ? 'تعطيل الشركة'
+                : 'تفعيل الشركة'}
             </button>
             <Link
               href="/control_admin"
               className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
             >
-              Back to Dashboard
+              العودة للوحة التحكم
             </Link>
           </div>
         </div>
@@ -319,7 +333,7 @@ export default function CompanyEventsPage() {
           
           {company.enabled === false && (
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-              This company is currently disabled. Users cannot register for any events.
+              هذه الشركة معطلة حالياً. لا يمكن للمستخدمين التسجيل في أي فعاليات.
             </div>
           )}
           
