@@ -157,6 +157,9 @@ export default function EditCompanyPage() {
       // Reset password field
       setFormData((prev) => ({ ...prev, password: '' }));
       
+      // Scroll to top to show success message
+      window.scrollTo(0, 0);
+      
       // No need to refresh company data, we already have the updated values
       // fetchCompany();
     } catch (error) {
@@ -211,12 +214,16 @@ export default function EditCompanyPage() {
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Edit Company</h1>
           <div className="flex items-center space-x-4">
-            <Link
-              href="/control_admin"
+            <button
+              onClick={() => {
+                if (confirm('Are you sure you want to go back? Any unsaved changes will be lost.')) {
+                  router.push('/control_admin');
+                }
+              }}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
             >
               Back to Dashboard
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -231,8 +238,16 @@ export default function EditCompanyPage() {
             )}
             
             {success && (
-              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                Company updated successfully!
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex justify-between items-center">
+                <div>
+                  <span className="font-bold">Success!</span> Company updated successfully!
+                </div>
+                <button
+                  onClick={() => router.push('/control_admin')}
+                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm"
+                >
+                  Back to Dashboard
+                </button>
               </div>
             )}
             
@@ -334,12 +349,17 @@ export default function EditCompanyPage() {
                 >
                   {submitting ? 'Updating...' : 'Update Company'}
                 </button>
-                <Link
-                  href="/control_admin"
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+                      router.push('/control_admin');
+                    }
+                  }}
                   className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800"
                 >
                   Cancel
-                </Link>
+                </button>
               </div>
             </form>
           </div>
