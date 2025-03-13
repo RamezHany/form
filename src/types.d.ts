@@ -18,8 +18,19 @@ declare module 'next-auth/react' {
     status: "loading" | "authenticated" | "unauthenticated";
   };
   
-  export function signIn(provider?: string, options?: any): Promise<any>;
-  export function signOut(options?: any): Promise<any>;
+  export interface SignInOptions {
+    callbackUrl?: string;
+    redirect?: boolean;
+    [key: string]: unknown;
+  }
+  
+  export interface SignOutOptions {
+    callbackUrl?: string;
+    redirect?: boolean;
+  }
+  
+  export function signIn(provider?: string, options?: SignInOptions): Promise<unknown>;
+  export function signOut(options?: SignOutOptions): Promise<unknown>;
 }
 
 declare module 'next/navigation' {
@@ -42,6 +53,7 @@ declare module 'next/link' {
     scroll?: boolean;
     shallow?: boolean;
     prefetch?: boolean;
+    className?: string;
   }
   
   export default function Link(props: LinkProps): ReactElement;
@@ -50,12 +62,20 @@ declare module 'next/link' {
 declare module 'next/image' {
   import { ComponentProps, ReactElement } from 'react';
   
+  export interface ImageLoaderProps {
+    src: string;
+    width: number;
+    quality?: number;
+  }
+  
+  export type ImageLoader = (params: ImageLoaderProps) => string;
+  
   export interface ImageProps extends Omit<ComponentProps<'img'>, 'src' | 'width' | 'height'> {
     src: string;
     width?: number;
     height?: number;
     fill?: boolean;
-    loader?: any;
+    loader?: ImageLoader;
     quality?: number;
     priority?: boolean;
     loading?: 'lazy' | 'eager';
@@ -68,6 +88,6 @@ declare module 'next/image' {
 // Add JSX namespace to fix JSX element errors
 namespace JSX {
   interface IntrinsicElements {
-    [elemName: string]: any;
+    [elemName: string]: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
   }
 } 
