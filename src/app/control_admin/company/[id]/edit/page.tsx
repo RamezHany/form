@@ -140,7 +140,7 @@ export default function EditCompany() {
       }
 
       // Prepare update data
-      const updateData: Record<string, any> = {
+      const updateData: Record<string, string | boolean> = {
         username: formData.username,
       };
 
