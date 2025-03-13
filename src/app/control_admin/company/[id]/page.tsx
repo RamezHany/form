@@ -179,8 +179,8 @@ export default function CompanyEventsPage() {
       
       console.log('Updated company enabled value in state:', updatedCompany.enabled);
       
-      const statusText = newEnabledValue ? 'مفعلة' : 'معطلة';
-      setSuccess(`تم تحديث حالة الشركة بنجاح. الشركة الآن ${statusText}`);
+      const statusText = newEnabledValue ? 'enabled' : 'disabled';
+      setSuccess(`Company status updated successfully. The company is now ${statusText}`);
       
       // إعادة تحميل البيانات من الخادم بعد فترة قصيرة
       setTimeout(() => {
@@ -302,16 +302,16 @@ export default function CompanyEventsPage() {
               }`}
             >
               {updating
-                ? 'جاري التحديث...'
+                ? 'Updating...'
                 : company.enabled === true
-                ? 'تعطيل الشركة'
-                : 'تفعيل الشركة'}
+                ? 'Disable Company'
+                : 'Enable Company'}
             </button>
             <Link
               href="/control_admin"
               className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
             >
-              العودة للوحة التحكم
+              Back to Dashboard
             </Link>
           </div>
         </div>
@@ -333,7 +333,7 @@ export default function CompanyEventsPage() {
           
           {company.enabled === false && (
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-              هذه الشركة معطلة حالياً. لا يمكن للمستخدمين التسجيل في أي فعاليات.
+              This company is currently disabled. Users cannot register for any events.
             </div>
           )}
           

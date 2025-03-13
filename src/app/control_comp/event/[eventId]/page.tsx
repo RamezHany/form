@@ -278,10 +278,10 @@ export default function EventRegistrationsPage() {
                   }`}
                 >
                   {updating
-                    ? 'جاري التحديث...'
+                    ? 'Updating...'
                     : eventDetails.enabled === true
-                    ? 'تعطيل الحدث'
-                    : 'تفعيل الحدث'}
+                    ? 'Disable Event'
+                    : 'Enable Event'}
                 </button>
               )}
             </div>

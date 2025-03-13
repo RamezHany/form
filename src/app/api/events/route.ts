@@ -22,10 +22,10 @@ export async function GET(request: NextRequest) {
       let tableStartRow = -1;
       let tableEndRow = -1;
       
-      // Get headers and find the index of the "الحالة" column for events
+      // Get headers and find the index of the "Status" column for events
       const headers = data[0] || [];
       const statusColumnIndex = headers.findIndex(header => 
-        header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+        header === 'Status' || header === 'Enabled' || header === 'enabled'
       );
       
       console.log('Event headers:', headers);
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
             
             // Find image URL if it exists
             const imageColumnIndex = data[tableStartRow].findIndex(
-              (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+              (cell) => cell === 'Image' || cell === 'image'
             );
             
             let imageUrl = null;
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
             let isEnabled = true; // Default to enabled
             if (statusColumnIndex !== -1 && data[tableStartRow + 1][statusColumnIndex] !== undefined) {
               const statusValue = data[tableStartRow + 1][statusColumnIndex];
-              isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+              isEnabled = statusValue === 'true' || statusValue === 'enabled';
             }
             
             events.push({
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
         
         // Find image URL if it exists
         const imageColumnIndex = data[tableStartRow].findIndex(
-          (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+          (cell) => cell === 'Image' || cell === 'image'
         );
         
         let imageUrl = null;
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
         let isEnabled = true; // Default to enabled
         if (statusColumnIndex !== -1 && data[tableStartRow + 1][statusColumnIndex] !== undefined) {
           const statusValue = data[tableStartRow + 1][statusColumnIndex];
-          isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+          isEnabled = statusValue === 'true' || statusValue === 'enabled';
         }
         
         events.push({
@@ -126,10 +126,10 @@ export async function GET(request: NextRequest) {
           let tableStartRow = -1;
           let tableEndRow = -1;
           
-          // Get headers and find the index of the "الحالة" column for events
+          // Get headers and find the index of the "Status" column for events
           const headers = companyData[0] || [];
           const statusColumnIndex = headers.findIndex(header => 
-            header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+            header === 'Status' || header === 'Enabled' || header === 'enabled'
           );
           
           for (let i = 0; i < companyData.length; i++) {
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
                 
                 // Find image URL if it exists
                 const imageColumnIndex = companyData[tableStartRow].findIndex(
-                  (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+                  (cell) => cell === 'Image' || cell === 'image'
                 );
                 
                 let imageUrl = null;
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
                 let isEnabled = true; // Default to enabled
                 if (statusColumnIndex !== -1 && companyData[tableStartRow + 1][statusColumnIndex] !== undefined) {
                   const statusValue = companyData[tableStartRow + 1][statusColumnIndex];
-                  isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+                  isEnabled = statusValue === 'true' || statusValue === 'enabled';
                 }
                 
                 allEvents.push({
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
             
             // Find image URL if it exists
             const imageColumnIndex = companyData[tableStartRow].findIndex(
-              (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+              (cell) => cell === 'Image' || cell === 'image'
             );
             
             let imageUrl = null;
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
             let isEnabled = true; // Default to enabled
             if (statusColumnIndex !== -1 && companyData[tableStartRow + 1][statusColumnIndex] !== undefined) {
               const statusValue = companyData[tableStartRow + 1][statusColumnIndex];
-              isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+              isEnabled = statusValue === 'true' || statusValue === 'enabled';
             }
             
             allEvents.push({
@@ -428,12 +428,12 @@ export async function PATCH(request: NextRequest) {
     
     // Find or add the image column
     let imageColumnIndex = headers.findIndex(
-      (cell) => cell === 'Image' || cell === 'image' || cell === 'الصورة'
+      (cell) => cell === 'Image' || cell === 'image'
     );
     
     if (imageColumnIndex === -1 && image) {
       // Add Image column if it doesn't exist
-      headers.push('الصورة');
+      headers.push('Image');
       imageColumnIndex = headers.length - 1;
       
       // Update the headers row
@@ -442,12 +442,12 @@ export async function PATCH(request: NextRequest) {
     
     // Find or add the status column
     let statusColumnIndex = headers.findIndex(
-      (cell) => cell === 'الحالة' || cell === 'Enabled' || cell === 'enabled'
+      (cell) => cell === 'Status' || cell === 'Enabled' || cell === 'enabled'
     );
     
     if (statusColumnIndex === -1 && enabled !== undefined) {
       // Add Status column if it doesn't exist
-      headers.push('الحالة');
+      headers.push('Status');
       statusColumnIndex = headers.length - 1;
       
       // Update the headers row
@@ -482,7 +482,7 @@ export async function PATCH(request: NextRequest) {
       }
       
       // Convert boolean to appropriate string value
-      updatedDataRow[statusColumnIndex] = enabled ? 'مفعل' : 'معطل';
+      updatedDataRow[statusColumnIndex] = enabled ? 'enabled' : 'disabled';
     }
     
     // Update the data row
@@ -496,7 +496,7 @@ export async function PATCH(request: NextRequest) {
         company: companyName,
         image: imageColumnIndex !== -1 ? updatedDataRow[imageColumnIndex] : null,
         enabled: statusColumnIndex !== -1 ? 
-          (updatedDataRow[statusColumnIndex] === 'مفعل' || updatedDataRow[statusColumnIndex] === 'true') : 
+          (updatedDataRow[statusColumnIndex] === 'enabled' || updatedDataRow[statusColumnIndex] === 'true') : 
           true
       },
     });

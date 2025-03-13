@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const companiesData = await getSheetData('companies');
     const headers = companiesData[0];
     const statusColumnIndex = headers.findIndex(header => 
-      header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+      header === 'Status' || header === 'Enabled' || header === 'enabled'
     );
     
     const companyIndex = companiesData.slice(1).findIndex(row => row[1] === companyName);
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       
       if (statusColumnIndex !== -1) {
         const statusValue = companyRow[statusColumnIndex];
-        const isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+        const isEnabled = statusValue === 'true' || statusValue === 'enabled';
         
         if (!isEnabled) {
           return NextResponse.json(
@@ -82,13 +82,13 @@ export async function POST(request: NextRequest) {
     // Check if event is enabled
     const eventHeaders = data[tableStartRow];
     const eventStatusColumnIndex = eventHeaders.findIndex(header => 
-      header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+      header === 'Status' || header === 'Enabled' || header === 'enabled'
     );
     
     if (eventStatusColumnIndex !== -1) {
       const eventDataRow = data[tableStartRow + 1] || [];
       const statusValue = eventDataRow[eventStatusColumnIndex];
-      const isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+      const isEnabled = statusValue === 'true' || statusValue === 'enabled';
       
       if (!isEnabled) {
         return NextResponse.json(

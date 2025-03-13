@@ -22,10 +22,10 @@ export async function GET() {
     
     console.log('Raw companies data from sheets:', data);
     
-    // Get headers and find the index of the "الحالة" column
+    // Get headers and find the index of the "Status" column
     const headers = data[0];
     const statusColumnIndex = headers.findIndex(header => 
-      header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+      header === 'Status' || header === 'Enabled' || header === 'enabled'
     );
     
     console.log('Headers:', headers);
@@ -39,9 +39,9 @@ export async function GET() {
       const statusValue = statusColumnIndex !== -1 ? row[statusColumnIndex] : 'true';
       console.log(`Company ${row[1]} status raw value:`, statusValue);
       
-      // تحسين طريقة تحويل قيمة الحالة من النص إلى قيمة منطقية
-      // اعتبار القيمة 'true' أو 'مفعل' كـ true، وأي قيمة أخرى كـ false
-      const isEnabled = statusValue === 'true' || statusValue === 'مفعل';
+      // Improve the conversion of status value from text to boolean
+      // Consider 'true' or 'enabled' as true, and any other value as false
+      const isEnabled = statusValue === 'true' || statusValue === 'enabled';
       console.log(`Company ${row[1]} isEnabled after conversion:`, isEnabled);
       
       return {
@@ -240,10 +240,10 @@ export async function PATCH(request: NextRequest) {
     // Get companies data
     const data = await getSheetData('companies');
     
-    // Get headers and find the index of the "الحالة" column
+    // Get headers and find the index of the "Status" column
     const headers = data[0];
     const statusColumnIndex = headers.findIndex(header => 
-      header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+      header === 'Status' || header === 'Enabled' || header === 'enabled'
     );
     
     console.log('Headers:', headers);
@@ -251,7 +251,7 @@ export async function PATCH(request: NextRequest) {
     
     // If status column doesn't exist, add it to headers
     if (statusColumnIndex === -1) {
-      headers.push('الحالة');
+      headers.push('Status');
       // Update the sheet with the new headers
       await updateRow('companies', 0, headers);
       console.log('Added status column to headers:', headers);
@@ -308,11 +308,11 @@ export async function PATCH(request: NextRequest) {
       
       // Get the current status column index (it might have been added)
       const currentStatusIndex = headers.findIndex(header => 
-        header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+        header === 'Status' || header === 'Enabled' || header === 'enabled'
       );
       
       // Convert boolean to appropriate string value
-      const statusValue = enabled ? 'مفعل' : 'معطل';
+      const statusValue = enabled ? 'enabled' : 'disabled';
       
       // Ensure the company array is long enough
       while (updatedCompany.length <= currentStatusIndex) {
@@ -335,11 +335,11 @@ export async function PATCH(request: NextRequest) {
     
     // Get the current status column index for the response
     const currentStatusIndex = headers.findIndex(header => 
-      header === 'الحالة' || header === 'Enabled' || header === 'enabled'
+      header === 'Status' || header === 'Enabled' || header === 'enabled'
     );
     
-    const statusValue = currentStatusIndex !== -1 ? updatedCompany[currentStatusIndex] : 'مفعل';
-    const isEnabled = statusValue === 'مفعل' || statusValue === 'true';
+    const statusValue = currentStatusIndex !== -1 ? updatedCompany[currentStatusIndex] : 'enabled';
+    const isEnabled = statusValue === 'enabled' || statusValue === 'true';
     
     const responseCompany = {
       id: updatedCompany[0],
