@@ -33,34 +33,92 @@ export const getAllSheets = async () => {
   }
 };
 
-// Get data from a specific sheet
-export const getSheetData = async (sheetName: string) => {
+/**
+ * Get data from a sheet
+ * @param spreadsheetId The ID of the spreadsheet or the name of the sheet in the main spreadsheet
+ * @param sheetName Optional sheet name within the spreadsheet (if first param is a spreadsheet ID)
+ * @returns Promise that resolves to the sheet data
+ */
+export const getSheetData = async (spreadsheetId: string, sheetName?: string): Promise<string[][]> => {
+  const sheets = google.sheets({ version: 'v4', auth });
   try {
+    // If only one parameter is provided, assume it's a sheet name in the main spreadsheet
+    if (!sheetName) {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: spreadsheetId, // Use the first parameter as the sheet name
+      });
+      return response.data.values || [];
+    }
+    
+    // If both parameters are provided, use them as spreadsheetId and sheetName
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      spreadsheetId,
       range: sheetName,
     });
     return response.data.values || [];
   } catch (error) {
-    console.error(`Error getting data from sheet ${sheetName}:`, error);
+    console.error('Error getting sheet data:', error);
     throw error;
   }
 };
 
-// Append data to a specific sheet
-export const appendToSheet = async (sheetName: string, values: unknown[][]) => {
+/**
+ * Append values to a sheet
+ * @param spreadsheetId The ID of the spreadsheet or the name of the sheet in the main spreadsheet
+ * @param sheetName The name of the sheet or the values to append (if first param is a sheet name)
+ * @param values The values to append (optional if second param contains the values)
+ * @returns Promise that resolves when the values are appended
+ */
+export const appendToSheet = async (
+  spreadsheetId: string, 
+  sheetNameOrValues: string | unknown[][], 
+  values?: unknown[][]
+): Promise<void> => {
+  const sheets = google.sheets({ version: 'v4', auth });
   try {
-    const response = await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: sheetName,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values,
-      },
-    });
-    return response.data;
+    // Case 1: Only sheet name and values provided (using main spreadsheet)
+    if (typeof sheetNameOrValues === 'string' && values) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: sheetNameOrValues,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values,
+        },
+      });
+      return;
+    }
+    
+    // Case 2: Sheet name is actually values (using main spreadsheet)
+    if (!values && Array.isArray(sheetNameOrValues)) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: process.env.GOOGLE_SHEET_ID,
+        range: spreadsheetId, // First param is sheet name
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: sheetNameOrValues,
+        },
+      });
+      return;
+    }
+    
+    // Case 3: All three parameters provided (custom spreadsheet)
+    if (typeof sheetNameOrValues === 'string' && values) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: sheetNameOrValues,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values,
+        },
+      });
+      return;
+    }
+    
+    throw new Error('Invalid parameters for appendToSheet');
   } catch (error) {
-    console.error(`Error appending data to sheet ${sheetName}:`, error);
+    console.error('Error appending to sheet:', error);
     throw error;
   }
 };
@@ -365,15 +423,14 @@ export const deleteTable = async (sheetName: string, tableName: string) => {
 };
 
 /**
- * Create a new sheet in a Google Sheets document
+ * Create a new sheet in a Google Sheets document with headers
  * @param spreadsheetId The ID of the spreadsheet
  * @param sheetName The name of the new sheet
  * @param headers The headers for the new sheet
  * @returns Promise that resolves when the sheet is created
  */
-export async function createSheet(spreadsheetId: string, sheetName: string, headers: string[]): Promise<void> {
+export async function createSheetWithHeaders(spreadsheetId: string, sheetName: string, headers: string[]): Promise<void> {
   try {
-    const auth = await getGoogleAuth();
     const sheets = google.sheets({ version: 'v4', auth });
 
     // Create the sheet

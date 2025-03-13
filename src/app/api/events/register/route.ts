@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetData, appendToSheet, createSheet } from '@/lib/sheets';
+import { getSheetData, appendToSheet, createSheetWithHeaders } from '@/lib/sheets';
 import { getEventRegistrationsSheet } from '@/lib/utils';
 
 // POST /api/events/register - Register for an event
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       registrationsData = await getSheetData(companySheetId, registrationsSheetName);
     } catch (error) {
       // Sheet might not exist yet, create it
-      await createSheet(companySheetId, registrationsSheetName, [
+      await createSheetWithHeaders(companySheetId, registrationsSheetName, [
         'Name', 'Email', 'Phone', 'Gender', 'College', 'Status', 'National ID', 'Timestamp'
       ]);
       registrationsData = [['Name', 'Email', 'Phone', 'Gender', 'College', 'Status', 'National ID', 'Timestamp']];
