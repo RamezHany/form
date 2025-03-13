@@ -138,7 +138,8 @@ export default function CompanyEventsPage() {
       setSuccess('');
       
       console.log('Current company enabled value before toggle:', company.enabled);
-      console.log('Sending enabled value to API:', !company.enabled);
+      const newEnabledValue = !(company.enabled === true);
+      console.log('Sending enabled value to API:', newEnabledValue);
       
       const response = await fetch('/api/companies', {
         method: 'PATCH',
@@ -147,7 +148,7 @@ export default function CompanyEventsPage() {
         },
         body: JSON.stringify({
           id: company.id,
-          enabled: !company.enabled,
+          enabled: newEnabledValue,
         }),
       });
       
@@ -163,12 +164,12 @@ export default function CompanyEventsPage() {
       // Update local state temporarily
       setCompany({
         ...company,
-        enabled: !company.enabled,
+        enabled: newEnabledValue,
       });
       
-      console.log('Updated company enabled value in state:', !company.enabled);
+      console.log('Updated company enabled value in state:', newEnabledValue);
       
-      setSuccess(`Company ${!company.enabled ? 'enabled' : 'disabled'} successfully`);
+      setSuccess(`Company ${newEnabledValue ? 'enabled' : 'disabled'} successfully`);
       
       // Reload data from server after a short delay
       setTimeout(() => {
@@ -189,6 +190,10 @@ export default function CompanyEventsPage() {
     try {
       setError('');
       
+      console.log(`Current event ${eventId} enabled value before toggle:`, currentEnabled);
+      const newEnabledValue = !currentEnabled;
+      console.log(`Sending enabled value to API for event ${eventId}:`, newEnabledValue);
+      
       const response = await fetch('/api/events', {
         method: 'PATCH',
         headers: {
@@ -197,7 +202,7 @@ export default function CompanyEventsPage() {
         body: JSON.stringify({
           companyName: company.name,
           eventName: eventId,
-          enabled: !currentEnabled,
+          enabled: newEnabledValue,
         }),
       });
       
@@ -209,14 +214,17 @@ export default function CompanyEventsPage() {
       // Update local state
       setEvents(events.map(event => 
         event.id === eventId 
-          ? { ...event, enabled: !currentEnabled } 
+          ? { ...event, enabled: newEnabledValue } 
           : event
       ));
       
-      setSuccess(`Event ${eventId} ${!currentEnabled ? 'enabled' : 'disabled'} successfully`);
+      console.log(`Updated event ${eventId} enabled value in state:`, newEnabledValue);
+      
+      setSuccess(`Event ${eventId} ${newEnabledValue ? 'enabled' : 'disabled'} successfully`);
       
       // Refresh events list after a short delay
       setTimeout(() => {
+        console.log(`Reloading events data for event ${eventId}...`);
         fetchCompanyAndEvents();
       }, 1000);
     } catch (error) {
@@ -269,7 +277,7 @@ export default function CompanyEventsPage() {
               onClick={handleToggleCompanyStatus}
               disabled={updating}
               className={`${
-                company.enabled
+                company.enabled === true
                   ? 'bg-red-100 hover:bg-red-200 text-red-800'
                   : 'bg-green-100 hover:bg-green-200 text-green-800'
               } font-semibold py-2 px-4 rounded ${
@@ -278,7 +286,7 @@ export default function CompanyEventsPage() {
             >
               {updating
                 ? 'Updating...'
-                : company.enabled
+                : company.enabled === true
                 ? 'Disable Company'
                 : 'Enable Company'}
             </button>
@@ -353,14 +361,14 @@ export default function CompanyEventsPage() {
                         View Registrations
                       </button>
                       <button
-                        onClick={() => handleToggleEventStatus(event.id, event.enabled !== false)}
+                        onClick={() => handleToggleEventStatus(event.id, event.enabled === true)}
                         className={`${
-                          event.enabled !== false
+                          event.enabled === true
                             ? 'bg-red-100 hover:bg-red-200 text-red-800'
                             : 'bg-green-100 hover:bg-green-200 text-green-800'
                         } font-semibold py-2 px-4 rounded`}
                       >
-                        {event.enabled !== false ? 'Disable' : 'Enable'}
+                        {event.enabled === true ? 'Disable' : 'Enable'}
                       </button>
                       <button
                         onClick={() => handleDeleteEvent(event.id)}
