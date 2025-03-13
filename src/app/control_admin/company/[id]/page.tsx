@@ -47,6 +47,8 @@ export default function CompanyEventsPage() {
       }
       
       const companiesData = await companiesResponse.json();
+      console.log('Companies data from API:', companiesData.companies);
+      
       const currentCompany = companiesData.companies.find(
         (c: Company) => c.id === companyId
       );
@@ -54,6 +56,9 @@ export default function CompanyEventsPage() {
       if (!currentCompany) {
         throw new Error('Company not found');
       }
+      
+      console.log('Current company from API:', currentCompany);
+      console.log('Current company enabled value:', currentCompany.enabled);
       
       setCompany(currentCompany);
       
@@ -132,6 +137,9 @@ export default function CompanyEventsPage() {
       setError('');
       setSuccess('');
       
+      console.log('Current company enabled value before toggle:', company.enabled);
+      console.log('Sending enabled value to API:', !company.enabled);
+      
       const response = await fetch('/api/companies', {
         method: 'PATCH',
         headers: {
@@ -143,10 +151,14 @@ export default function CompanyEventsPage() {
         }),
       });
       
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update company');
+        throw new Error(responseData.error || 'Failed to update company');
       }
+      
+      console.log('Response from API after toggle:', responseData);
+      console.log('Company enabled value in response:', responseData.company.enabled);
       
       // Update local state temporarily
       setCompany({
@@ -154,10 +166,13 @@ export default function CompanyEventsPage() {
         enabled: !company.enabled,
       });
       
+      console.log('Updated company enabled value in state:', !company.enabled);
+      
       setSuccess(`Company ${!company.enabled ? 'enabled' : 'disabled'} successfully`);
       
       // Reload data from server after a short delay
       setTimeout(() => {
+        console.log('Reloading data from server...');
         fetchCompanyAndEvents();
       }, 1000);
     } catch (error) {
