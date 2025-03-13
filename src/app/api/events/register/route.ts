@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     
     try {
       registrationsData = await getSheetData(companySheetId, registrationsSheetName);
-    } catch (_) {
+    } catch {
       // Sheet might not exist yet, create it
       await createSheetWithHeaders(companySheetId, registrationsSheetName, [
         'Name', 'Email', 'Phone', 'Gender', 'College', 'Status', 'National ID', 'Timestamp'

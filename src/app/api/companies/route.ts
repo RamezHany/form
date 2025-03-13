@@ -37,6 +37,24 @@ export async function GET(request: NextRequest) {
       enabled: row[5] === 'true', // Add enabled field
     }));
     
+    // If id is provided, return only that company
+    if (id) {
+      const company = companies.find(c => c.id === id);
+      if (!company) {
+        return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      }
+      return NextResponse.json(company);
+    }
+    
+    // If name is provided, return only that company
+    if (name) {
+      const company = companies.find(c => c.name === name);
+      if (!company) {
+        return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+      }
+      return NextResponse.json(company);
+    }
+    
     return NextResponse.json({ companies });
   } catch (error) {
     console.error('Error getting companies:', error);
