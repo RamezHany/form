@@ -112,6 +112,11 @@ export default function AdminDashboard() {
       ));
       
       setSuccess(`Company ${company.name} ${!company.enabled ? 'enabled' : 'disabled'} successfully`);
+      
+      // Refresh companies list after a short delay
+      setTimeout(() => {
+        fetchCompanies();
+      }, 1000);
     } catch (error) {
       console.error('Error updating company:', error);
       setError(error instanceof Error ? error.message : 'Failed to update company');
@@ -219,6 +224,7 @@ export default function AdminDashboard() {
                       <Link
                         href={`/control_admin/edit-company/${company.id}`}
                         className="bg-green-100 hover:bg-green-200 text-green-800 font-semibold py-2 px-4 rounded"
+                        prefetch={true}
                       >
                         Edit
                       </Link>

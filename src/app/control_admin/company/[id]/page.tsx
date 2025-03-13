@@ -194,6 +194,11 @@ export default function CompanyEventsPage() {
       ));
       
       setSuccess(`Event ${eventId} ${!currentEnabled ? 'enabled' : 'disabled'} successfully`);
+      
+      // Refresh events list after a short delay
+      setTimeout(() => {
+        fetchCompanyAndEvents();
+      }, 1000);
     } catch (error) {
       console.error('Error updating event:', error);
       setError(error instanceof Error ? error.message : 'Failed to update event');

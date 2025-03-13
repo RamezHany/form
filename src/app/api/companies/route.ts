@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     
     // Add company to the sheet
     await appendToSheet('companies', [
-      [id, name, username, hashedPassword, imageUrl],
+      [id, name, username, hashedPassword, imageUrl, 'true'],
     ]);
     
     // Create a sheet for the company
