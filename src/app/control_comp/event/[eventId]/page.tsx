@@ -134,8 +134,6 @@ export default function EventRegistrationsPage() {
         throw new Error(errorData.error || 'Failed to update event');
       }
       
-      const data = await response.json();
-      
       // Update local state
       setEventDetails({
         ...eventDetails,

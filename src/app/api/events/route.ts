@@ -271,7 +271,7 @@ export async function PATCH(request: NextRequest) {
     const headers = tableData[0];
     
     // Prepare the updated first row
-    let firstRow = tableData.length > 1 ? [...tableData[1]] : Array(headers.length).fill('');
+    const firstRow = tableData.length > 1 ? [...tableData[1]] : Array(headers.length).fill('');
     
     // Update image if provided
     if (image) {

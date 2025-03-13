@@ -20,7 +20,6 @@ export default function EditCompanyPage() {
   const params = useParams();
   const companyId = params.id as string;
   
-  const [company, setCompany] = useState<Company | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -33,24 +32,6 @@ export default function EditCompanyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  useEffect(() => {
-    // Redirect if not authenticated or not admin
-    if (status === 'unauthenticated') {
-      router.push('/login');
-      return;
-    }
-
-    if (status === 'authenticated' && session.user.type !== 'admin') {
-      router.push('/');
-      return;
-    }
-
-    // Fetch company details
-    if (status === 'authenticated') {
-      fetchCompany();
-    }
-  }, [status, session, router, companyId]);
 
   const fetchCompany = async () => {
     try {
@@ -68,7 +49,6 @@ export default function EditCompanyPage() {
         throw new Error('Company not found');
       }
       
-      setCompany(foundCompany);
       setFormData({
         name: foundCompany.name,
         username: foundCompany.username,
@@ -87,6 +67,24 @@ export default function EditCompanyPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Redirect if not authenticated or not admin
+    if (status === 'unauthenticated') {
+      router.push('/login');
+      return;
+    }
+
+    if (status === 'authenticated' && session.user.type !== 'admin') {
+      router.push('/');
+      return;
+    }
+
+    // Fetch company details
+    if (status === 'authenticated') {
+      fetchCompany();
+    }
+  }, [status, session, router, companyId, fetchCompany]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
